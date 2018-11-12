@@ -10,6 +10,7 @@ The FreeIntv core is licensed under GPLv3.
 
 ## BIOS
 FreeChaF requires two BIOS files to be placed in the libretro 'system' folder:
+
 |Filename | Description |
 |---|---|
 |sl31253.bin | ChannelF BIOS (PSU 1)|
