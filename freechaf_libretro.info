@@ -1,6 +1,6 @@
 display_name = "Fairchild - ChannelF (FreeChaF)"
 authors = "David Richardson"
-supported_extensions = "rom bin"
+supported_extensions = "rom|bin"
 corename = "FreeChaF"
 manufacturer = "Fairchild"
 categories = "Emulator"
