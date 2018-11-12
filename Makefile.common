@@ -1,0 +1,31 @@
+LIBRETRO_COMM_DIR = $(SOURCE_DIR)/deps/libretro-common
+
+SOURCES_C := \
+	$(SOURCE_DIR)/libretro.c \
+	$(SOURCE_DIR)/channelf.c \
+	$(SOURCE_DIR)/memory.c \
+	$(SOURCE_DIR)/f8.c \
+	$(SOURCE_DIR)/f2102.c \
+	$(SOURCE_DIR)/controller.c \
+	$(SOURCE_DIR)/audio.c \
+	$(SOURCE_DIR)/video.c \
+	$(SOURCE_DIR)/ports.c \
+	$(SOURCE_DIR)/osd.c \
+
+ifeq ($(STATIC_LINKING),1)
+else
+SOURCES_C += $(LIBRETRO_COMM_DIR)/file/file_path.c \
+				 $(LIBRETRO_COMM_DIR)/compat/compat_posix_string.c \
+				 $(LIBRETRO_COMM_DIR)/compat/compat_snprintf.c \
+				 $(LIBRETRO_COMM_DIR)/compat/compat_strl.c \
+				 $(LIBRETRO_COMM_DIR)/compat/compat_strcasestr.c \
+				 $(LIBRETRO_COMM_DIR)/encodings/encoding_utf.c
+endif
+
+SOURCES_CXX := 
+
+INCLUDES := -I$(LIBRETRO_COMM_DIR)/include
+
+ifneq (,$(findstring msvc200,$(platform)))
+INCLUDES += -I$(LIBRETRO_COMM_DIR)/include/compat/msvc
+endif

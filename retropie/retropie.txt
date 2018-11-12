@@ -1,0 +1,119 @@
+-----------------------------------------------------------------
+To Install FreeChaF on RetroPie 4.4:
+-----------------------------------------------------------------
+
+Installing FreeChaF is simple, though you'll need a basic
+understanding of file system operations and be comfortable
+working from the command line.
+
+Specifically, you'll need to know how to change directories,
+how to move or copy files, and how to edit text files.
+
+-----------------------------------------------------------------
+Step 1:  Create the necessary directories
+-----------------------------------------------------------------
+
+	> sudo mkdir /opt/retropie/libretrocores/lr-freechaf
+	> sudo mkdir /opt/retropie/configs/channelf
+
+-----------------------------------------------------------------
+Step 2: Install the libreto core
+-----------------------------------------------------------------
+
+Copy the file:
+
+	freechaf_libretro.so
+to: 
+	/opt/retropie/libretrocores/lr-freechaf
+
+Be sure to set permissions to 755:
+
+	> sudo chmod 755 /opt/retropie/libretrocores/lr-freechaf/*
+
+-----------------------------------------------------------------
+Step 3: Add the retroarch config file
+-----------------------------------------------------------------
+
+Add the file:
+
+	retroarch.cfg
+to:
+	/opt/retropie/configs/channelf
+
+Be sure to set permissions to 755:
+
+	> sudo chmod 755 /opt/retropie/configs/channelf/*
+
+-----------------------------------------------------------------
+Step 4:  
+-----------------------------------------------------------------
+
+If you're already using an channelf emulator, add the line:
+
+	lr-freechaf = "/opt/retropie/emulators/retroarch/bin/retroarch -L /opt/retropie/libretrocores/lr-freechaf/freechaf_libretro.so --config /opt/retropie//configs/channelf/retroarch.cfg %ROM%"
+
+to the top of the file:
+
+	/opt/retropie/configs/channelf/emulators.cfg
+
+Optionally, you can choose to set it as default, as is the case for
+the included emulators.cfg file.
+
+If not, copy the included emulators.cfg file to:
+
+	/opt/retropie/configs/channelf/
+
+Be sure to set permissions to 755:
+
+	> sudo chmod 755 /opt/retropie/configs/channelf/*
+
+-----------------------------------------------------------------
+Step 5: Add the system
+-----------------------------------------------------------------
+
+Add the following entry to /etc/emulationstation/es_systems.cfg
+
+  <system>
+    <name>channelf</name>
+    <fullname>ChannelF</fullname>
+    <path>/home/pi/RetroPie/roms/channelf</path>
+    <extension>.rom .bin .ROM .BIN</extension>
+    <command>/opt/retropie/supplementary/runcommand/runcommand.sh 0 _SYS_ channelf %ROM%</command>
+    <platform>channelf</platform>
+    <theme>channelf</theme>
+  </system>
+
+-----------------------------------------------------------------
+Step 6: Add the BOIS files
+-----------------------------------------------------------------
+
+sl31253.bin
+sl31254.bin
+sl90025.bin
+
+You'll always need sl31254.bin, but you can substitute sl21253.bin
+for sl90025.bin.  The latter is the updated ROM used by the 
+ChannelF II.  All games work with both sl31253.bin and sl90025.bin.
+
+-----------------------------------------------------------------
+Step 7: Restart EmulationStation and play some ChannelF! 
+-----------------------------------------------------------------
+
+Turn the dial to ChannelF for Fun!
+
+----------------------------------------------------------------
+Remember that FreeChaF is free software
+----------------------------------------------------------------
+
+FreeChaF is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Freechaf is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Freechaf.  If not, see http://www.gnu.org/licenses/
