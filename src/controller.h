@@ -19,7 +19,7 @@
 
 void CONTROLLER_portReceive(int port, int val);
 
-void CONTROLLER_portReceive(int port, int val);
+int CONTROLLER_portRead(int port);
 
 void CONTROLLER_setInput(int control, int state);
 

@@ -19,6 +19,8 @@
 #include "ports.h"
 #include "channelf.h"
 
+#include <stdio.h>
+
 int State[] = {0,0,0};
 int enabled = 0;
 
@@ -30,24 +32,6 @@ int ConsolePort = 0;
 int ControlAPort = 1;
 int ControlBPort = 4;
 int Swapped = 0;
-
-void poll(int control)
-{
-	switch(control)
-	{
-		case Console:
-			PORTS_write(ConsolePort, (State[Console]^0xFF) & 0x0F);
-		break;
-
-		case ControlA:
-			PORTS_write(ControlAPort, (State[ControlA]^0xFF) & 0xFF);
-		break;
-
-		case ControlB:
-			PORTS_write(ControlBPort, (State[ControlB]^0xFF) & 0xFF);
-		break;
-	}
-}
 
 void setButton(int control, int button, int pressed)
 {
@@ -77,7 +61,6 @@ void setButton(int control, int button, int pressed)
 	{
 		State[control] &= (1<<button)^0xFF;
 	}
-	if(enabled) { poll(control); }
 }
 
 void CONTROLLER_setInput(int control, int state)
@@ -85,7 +68,6 @@ void CONTROLLER_setInput(int control, int state)
 	if(control>=0 && control<=2)
 	{
 		State[control] = state;
-		if(enabled) { poll(control); }
 	}
 }
 
@@ -103,26 +85,34 @@ int CONTROLLER_swapped()
 	return Swapped;
 }
 
+int CONTROLLER_portRead(int port)
+{
+	if(port==ConsolePort)
+	{
+		 return (State[Console]^0xFF) & 0x0F;
+	}
+	if(enabled)
+	{
+		if(port==ControlAPort)
+		{
+			return(State[ControlA]^0xFF);
+		}	
+		if(port==ControlBPort)
+		{
+			return(State[ControlB]^0xFF);
+		}
+	}
+	return 0;
+}
+
 void CONTROLLER_portReceive(int port, int val)
 {
 	val &=0xFF;
 	if(port==ConsolePort) // Console
 	{
 		enabled = (val&0x40)==0;
-		poll(Console);
-	}
-
-	if(port==ControlAPort && val==0) // ControlA 
-	{
-		poll(ControlA);
-	}
-
-	if(port==ControlBPort && val==0) // ControlB
-	{
-		poll(ControlB);
 	}
 }
-
 
 // Console buttons
 

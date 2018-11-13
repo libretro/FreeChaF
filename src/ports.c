@@ -24,7 +24,7 @@
 // Read state of port
 int PORTS_read(int port)
 {
-	return Ports[port];
+	return Ports[port] | CONTROLLER_portRead(port); // controllers don't latch?
 }
 
 // Write data to port
