@@ -3,10 +3,10 @@ FreeChaF is a libretro emulation core for the Fairchild ChannelF / Video Enterta
 
 ## Authors
 
-FreeIntv was created by David Richardson.
+FreeChaF was created by David Richardson.
 
 ## License
-The FreeIntv core is licensed under GPLv3.
+The FreeChaF core is licensed under GPLv3.
 
 ## BIOS
 FreeChaF requires two BIOS files to be placed in the libretro 'system' folder:
