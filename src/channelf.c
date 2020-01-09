@@ -40,15 +40,12 @@ int CHANNELF_loadROM(const char* path, int address)
 		fclose(fp);
 		return 1;	
 	}
-	else
-	{
-		return 0;
-	}
+   return 0;
 }
 
-void CHANNELF_run() // run for one frame
+void CHANNELF_run(void) // run for one frame
 {
-	int tick = 0;
+	int tick  = 0;
 	int ticks = 0;
 
 	while(ticks<14914)
@@ -59,13 +56,13 @@ void CHANNELF_run() // run for one frame
 	}
 }
 
-void CHANNELF_init()
+void CHANNELF_init(void)
 {
 	F8_init();
 	CHANNELF_reset();
 }
 
-void CHANNELF_reset()
+void CHANNELF_reset(void)
 {
 	MEMORY_reset();
 	F2102_reset();

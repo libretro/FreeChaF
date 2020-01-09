@@ -72,14 +72,11 @@ void F2102_portReceive(int port, int val)
 	PORTS_write(0x25, state & 0xFF);
 }
 
-void F2102_reset()
+void F2102_reset(void)
 {
 	state = 0;
 	address = 0;
 	int i;
 	for(i=0; i<1024; i++)
-	{
 		memory[i] = 0;
-	}
 }
-

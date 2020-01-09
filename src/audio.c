@@ -64,7 +64,7 @@ void AUDIO_tick(int dt) // dt = ticks elapsed since last call
 	// at 44.1khz, there are 735 samples per frame
 	// ~20.29 ticks per sample (14913.15 ticks/frame)
 	
-	ticks+=(float)dt;
+	ticks += (float)dt;
 
 	while(ticks>20.29)
 	{
@@ -88,7 +88,7 @@ void AUDIO_tick(int dt) // dt = ticks elapsed since last call
 	}
 }
 
-void AUDIO_frame()
+void AUDIO_frame(void)
 {
 	while(sample<samplesPerFrame)
 	{
@@ -99,23 +99,19 @@ void AUDIO_frame()
 	sample = 0;
 }
 
-void AUDIO_reset()
+void AUDIO_reset(void)
 {
 	int i;
 
 	// clear buffer
 	for(i=0; i<735; i++)
-	{
 		AUDIO_Buffer[i] = 0;
-	}
 
 	// reset tone generator
 	tone = 0;
 	toneCounter = 0;
 	for(i=1; i<4; i++)
-	{
 		toneOutput[i] = 0;
-	}
 
 	// start a new audio frame
 	sample = 0;

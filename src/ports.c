@@ -43,11 +43,9 @@ void PORTS_notify(int port, int val)
 	CONTROLLER_portReceive(port, val);
 }
 
-void PORTS_reset()
+void PORTS_reset(void)
 {
 	int i;
 	for(i=0; i<64; i++)
-	{
 		Ports[i] = 0;
-	}
 }

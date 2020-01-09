@@ -991,23 +991,23 @@ void F8_init()
 	OpCodes[0xFF] = NOP;
 }
 
-int F8_exec() // execute a single instruction
+int F8_exec(void) /* execute a single instruction */
 {
 	PC0++;
 	return OpCodes[Memory[PC0-1]](Memory[PC0-1]);
 }
 
-void F8_reset()
+void F8_reset(void)
 {
 	int i;
-	// clear registers, flags
+	/* clear registers, flags */
 	A=0;
 	W=0;
 	ISAR = 0;
 	PC0=0; PC1=0;
 	DC0=0; DC1=0;
 
-	// clear scratchpad
+	/* clear scratchpad */
 	for(i=0; i<64; i++)
 	{
 		R[i] = 0; 

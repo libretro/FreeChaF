@@ -57,10 +57,11 @@ void OSD_HLine(int x, int y, int len)
 }
 void OSD_VLine(int x, int y, int len)
 {
-	if(x<0 || y<0 || ((y+len)*DisplayWidth+x)>DisplaySize) { return; }
+   int offset, i;
+	if(x<0 || y<0 || ((y+len)*DisplayWidth+x)>DisplaySize)
+      return;
 	
-	int offset = (y*DisplayWidth)+x;
-	int i;
+	offset = (y*DisplayWidth)+x;
 	for(i=0; i<=len; i++)
 	{
 		Frame[offset] = DisplayColor[1];
@@ -80,9 +81,7 @@ void OSD_FillBox(int x1, int y1, int width, int height)
 {
 	int i;
 	for(i=0; i<height; i++)
-	{
 		OSD_HLine(x1, y1+i, width);
-	}
 }
 
 int letters[590] = // 32 - 90 59x10
@@ -171,13 +170,15 @@ void OSD_drawLetter(int x, int y, int c)
 void OSD_drawText(int x, int y, const char *text)
 {
 	int len = strlen(text);
-	int i = 0;
-	int c = 32;
+	int i   = 0;
+	int c   = 32;
 	while(i<len)
 	{
 		c = text[i];
-		if(c<32) { break; }
-		if(c>90) { c = 32; }
+		if(c<32)
+         break;
+		if(c>90)
+         c = 32;
 		i++;
 		OSD_drawLetter(x, y, c);
 		x+=8;
@@ -188,7 +189,7 @@ void OSD_drawTextBoxed(int x, int y, const char *text)
 {
 	unsigned int t1 = DisplayColor[1];
 
-	int len = (strlen(text)*8)+1;
+	int len         = (strlen(text)*8)+1;
 
 	DisplayColor[1] = DisplayColor[0];
 	OSD_FillBox(x, y, len, 10);
@@ -205,32 +206,31 @@ void OSD_drawTextCenterBoxed(int y, const char *text)
 	int x = (DisplayWidth-len) / 2;
 
 	if(x>=0)
-	{
 		OSD_drawTextBoxed(x, y, text);
-	}
 }
 
-// ChannelF 
+/* ChannelF  */
 
-// controller swaps
-void OSD_drawP1P2()
+/* controller swaps */
+void OSD_drawP1P2(void)
 {
 	OSD_drawTextBoxed(DisplayWidth-17, DisplayHeight-13, "P2P1");
 }
 
-void OSD_drawP2P1()
+void OSD_drawP2P1(void)
 {
 	OSD_drawTextBoxed(DisplayWidth-17, DisplayHeight-13, "P1P2");
 }
 
-// console buttons
+/* console buttons */
 void OSD_drawConsole(int pos, int down)
 {
+	int i;
 	unsigned int t0 = DisplayColor[0];
 	unsigned int t1 = DisplayColor[1];
 
-	int x = (DisplayWidth-98)/2;
-	int y = (DisplayHeight-50);
+	int x           = (DisplayWidth-98)/2;
+	int y           = (DisplayHeight-50);
 
 	DisplayColor[1] = 0x000000;
 	OSD_FillBox(x, y, 98, 21);
@@ -244,7 +244,6 @@ void OSD_drawConsole(int pos, int down)
 	DisplayColor[1] = 0x000000;
 	OSD_drawLetter(x+4, y+4, 'R');
 	
-	int i;
 	for(i=0; i<4; i++)
 	{
 		x+=19;
@@ -259,33 +258,33 @@ void OSD_drawConsole(int pos, int down)
 	DisplayColor[1] = 0x00FF00;
 	OSD_Box(x+(19*pos)-1, y-1, 17, 17);
 	if(down)
-	{
 		OSD_Box(x+(19*pos), y, 15, 15);
-	}
 
 	DisplayColor[0] = 0x000000;
 	DisplayColor[1] = 0xFFFFFF;
 
 	switch(pos)
-	{
-		case 0: OSD_drawTextCenterBoxed(DisplayHeight-26, "RESET"); break;
-		case 1:
-			OSD_drawTextCenterBoxed(DisplayHeight-26, "TIME");
-			OSD_drawTextCenterBoxed(DisplayHeight-16, "2 MIN / HOCKEY");
-		break;
-		case 2:
-			OSD_drawTextCenterBoxed(DisplayHeight-26, "MODE");
-			OSD_drawTextCenterBoxed(DisplayHeight-16, "5 MIN / TENNIS");
-		break;
-		case 3:
-			OSD_drawTextCenterBoxed(DisplayHeight-26, "HOLD");
-			OSD_drawTextCenterBoxed(DisplayHeight-16, "10 MIN / GAME 3");
-		break;
-		case 4:
-			OSD_drawTextCenterBoxed(DisplayHeight-26, "START");
-			OSD_drawTextCenterBoxed(DisplayHeight-16, "20 MIN / GAME 4");
-		break;
-	}
+   {
+      case 0:
+         OSD_drawTextCenterBoxed(DisplayHeight-26, "RESET");
+         break;
+      case 1:
+         OSD_drawTextCenterBoxed(DisplayHeight-26, "TIME");
+         OSD_drawTextCenterBoxed(DisplayHeight-16, "2 MIN / HOCKEY");
+         break;
+      case 2:
+         OSD_drawTextCenterBoxed(DisplayHeight-26, "MODE");
+         OSD_drawTextCenterBoxed(DisplayHeight-16, "5 MIN / TENNIS");
+         break;
+      case 3:
+         OSD_drawTextCenterBoxed(DisplayHeight-26, "HOLD");
+         OSD_drawTextCenterBoxed(DisplayHeight-16, "10 MIN / GAME 3");
+         break;
+      case 4:
+         OSD_drawTextCenterBoxed(DisplayHeight-26, "START");
+         OSD_drawTextCenterBoxed(DisplayHeight-16, "20 MIN / GAME 4");
+         break;
+   }
 
 	DisplayColor[0] = t0;
 	DisplayColor[1] = t1;

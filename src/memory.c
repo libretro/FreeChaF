@@ -16,12 +16,10 @@
 */
 #include "memory.h"
 
-void MEMORY_reset()
+void MEMORY_reset(void)
 {
-	// clear memory
-	int i;
-	for(i=MEMORY_RAMStart; i<=0xFFFF; i++)
-	{
-		Memory[i] = 0; 
-	}
+   /* clear memory */
+   int i;
+   for(i=MEMORY_RAMStart; i<=0xFFFF; i++)
+      Memory[i] = 0; 
 }

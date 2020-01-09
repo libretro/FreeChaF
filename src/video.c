@@ -27,7 +27,7 @@ int X = 0;
 int Y = 0;
 int Color = 2; 
 
-void VIDEO_drawFrame()
+void VIDEO_drawFrame(void)
 {
 	int row;
 	int col;
