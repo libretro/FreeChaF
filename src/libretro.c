@@ -342,7 +342,7 @@ void retro_get_system_info(struct retro_system_info *info)
 	memset(info, 0, sizeof(*info));
 	info->library_name = "FreeChaF";
 	info->library_version = "1.0";
-	info->valid_extensions = "bin|rom";
+	info->valid_extensions = "bin|rom|chf";
 	info->need_fullpath = true;
 }
 
