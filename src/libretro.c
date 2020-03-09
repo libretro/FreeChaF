@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include <string.h>
 #include "libretro.h"
 #include <file/file_path.h>
@@ -49,8 +50,22 @@ retro_input_poll_t InputPoll;
 retro_input_state_t InputState;
 struct retro_vfs_interface *vfs_interface;
 
+static void fallback_log(enum retro_log_level level, const char *fmt, ...)
+{
+	va_list va;
+
+	(void)level;
+
+	va_start(va, fmt);
+	vfprintf(stderr, fmt, va);
+	va_end(va);
+}
+
+static retro_log_printf_t log_cb = fallback_log;
 
 void retro_set_environment(retro_environment_t fn) {
+	struct retro_log_callback logging;
+
 	Environ = fn;
 
 	struct retro_vfs_interface_info vfs_interface_info;
@@ -58,6 +73,29 @@ void retro_set_environment(retro_environment_t fn) {
 	vfs_interface_info.iface = NULL;
 	if (fn(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info))
 		vfs_interface = vfs_interface_info.iface;
+
+	if (fn(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &logging))
+		log_cb = logging.log;
+
+	static struct retro_variable variables[] =
+		{
+			{
+				"freechaf_fast_scrclr",
+				"Clear screen in single frame; disabled|enabled",
+			},
+			{ NULL, NULL },
+		};
+
+	fn(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
+}
+
+static void update_variables(void)
+{
+	struct retro_variable var;
+	var.key = "freechaf_fast_scrclr";
+	var.value = NULL;
+
+	hle_state.fast_screen_clear = (Environ(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) && strcmp (var.value, "enabled") == 0;
 }
 
 static int CHANNELF_loadROM_libretro(const char* path, int address)
@@ -116,10 +154,19 @@ bool console_input = false;
 // at 44.1khz, read 735 samples (44100/60) 
 static const int audioSamples = 735;
 
-static void Keyboard(bool down, unsigned keycode,
-      uint32_t character, uint16_t key_modifiers)
+void unsupported_hle_function ()
 {
-	/* Keyboard Input */
+	char formatted[1024];
+	struct retro_message msg;
+	snprintf(formatted, sizeof(formatted) - 1, "Unsupported HLE function: 0x%x", PC0);
+
+	log_cb(RETRO_LOG_ERROR, "Unsupported HLE function: 0x%x\n", PC0);
+	msg.msg    = formatted;
+	msg.frames = 600;
+	if (log_cb)
+		log_cb(RETRO_LOG_ERROR, "%s\n", formatted);
+	Environ(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
+	Environ(RETRO_ENVIRONMENT_SHUTDOWN, NULL);
 }
 
 void retro_init(void)
@@ -127,7 +174,6 @@ void retro_init(void)
 	char PSU_1_Update_Path[PATH_MAX_LENGTH];
 	char PSU_1_Path[PATH_MAX_LENGTH];
 	char PSU_2_Path[PATH_MAX_LENGTH];
-	struct retro_keyboard_callback kb = { Keyboard };
 
 	// init buffers, structs
 	memset(frame, 0, frameSize*sizeof(unsigned int));
@@ -144,14 +190,15 @@ void retro_init(void)
 	fill_pathname_join(PSU_1_Update_Path, SystemPath, "sl90025.bin", PATH_MAX_LENGTH);
 	if(!CHANNELF_loadROM_libretro(PSU_1_Update_Path, 0))
 	{
-		printf("[ERROR] [FREECHAF] Failed loading Channel F II BIOS(1) from: %s\n", PSU_1_Update_Path);
+		log_cb(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F II BIOS(1) from: %s\n", PSU_1_Update_Path);
 		
 		// load PSU 1 Original
 		fill_pathname_join(PSU_1_Path, SystemPath, "sl31253.bin", PATH_MAX_LENGTH);
 		if(!CHANNELF_loadROM_libretro(PSU_1_Path, 0))
 		{
-			printf("[ERROR] [FREECHAF] Failed loading Channel F BIOS(1) from: %s\n", PSU_1_Path);
-			exit(0);
+			log_cb(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(1) from: %s\n", PSU_1_Path);
+			hle_state.psu1_hle = true;
+			log_cb(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Switching to HLE for PSU1\n");			
 		}
 	}
 
@@ -159,16 +206,22 @@ void retro_init(void)
 	fill_pathname_join(PSU_2_Path, SystemPath, "sl31254.bin", PATH_MAX_LENGTH);
 	if(!CHANNELF_loadROM_libretro(PSU_2_Path, 0x400))
 	{
-		printf("[ERROR] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
-		exit(0);
+		log_cb(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
+		hle_state.psu2_hle = true;
+		log_cb(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Switching to HLE for PSU2\n");			
 	}
 
-	// Setup keyboard input
-	Environ(RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK, &kb);
+	if (hle_state.psu1_hle || hle_state.psu2_hle) {
+			struct retro_message msg;
+			msg.msg    = "Couldn't load BIOS. Using experimental HLE mode. In case of problem please use BIOS";
+			msg.frames = 600;
+			Environ(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
+	}
 }
 
 bool retro_load_game(const struct retro_game_info *info)
 {
+	update_variables();
 	return CHANNELF_loadROM_mem(info->data, info->size, 0x800);
 }
 
@@ -180,6 +233,10 @@ void retro_unload_game(void)
 void retro_run(void)
 {
 	int i = 0;
+
+	bool updated = false;
+	if (Environ(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+		update_variables();
 
 	InputPoll();
 
@@ -424,12 +481,12 @@ void retro_reset(void)
 
 struct serialized_state
 {
+	unsigned int cpu_ticks_debt;
 	unsigned char Memory[MEMORY_SIZE];
 	unsigned char R[R_SIZE]; // 64 byte Scratchpad
 	unsigned char VIDEO_Buffer[8192];
 	unsigned char Ports[64];
 
-	unsigned char A; // Accumulator
 	unsigned short PC0; // Program Counter
 	unsigned short PC1; // Program Counter alternate
 	unsigned short DC0; // Data Counter
@@ -441,6 +498,7 @@ struct serialized_state
 	unsigned char f2102_memory[1024];
 	unsigned short f2102_address;
 	unsigned char f2102_rw;
+	unsigned char A; // Accumulator
 
 	unsigned char ARM, X, Y, Color;
 	unsigned char ControllerEnabled;
@@ -449,6 +507,8 @@ struct serialized_state
 	unsigned char console_input;
 	unsigned char tone;
 	unsigned short amp;
+
+	struct hle_state_s hle_state;
 };
 
 size_t retro_serialize_size(void) {
@@ -459,8 +519,14 @@ size_t retro_serialize_size(void) {
 static inline unsigned short be16(unsigned short v) {
 	return ((v & 0xff) << 8) | ((v & 0xff00) >> 8);
 }
+static inline unsigned int be32(unsigned int v) {
+	return ((v & 0xff) << 24) | ((v & 0xff00) << 8) | ((v & 0xff0000) >> 8) | ((v & 0xff000000) >> 16);
+}
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 static inline unsigned short be16(unsigned short v) {
+	return v;
+}
+static inline unsigned int be32(unsigned int v) {
 	return v;
 }
 #else
@@ -502,6 +568,8 @@ bool retro_serialize(void *data, size_t size) {
 
 	st->tone = tone;
 	st->amp = be16(amp);
+	st->hle_state = hle_state;
+	st->cpu_ticks_debt = be32(cpu_ticks_debt);
 
 	return true;
 }
@@ -539,9 +607,11 @@ bool retro_unserialize(const void *data, size_t size) {
 	ControllerSwapped = st->ControllerSwapped;
 
 	console_input = st->console_input;
+	hle_state = st->hle_state;
 
 	tone = st->tone;
 	amp = be16(st->amp);
+	cpu_ticks_debt = be32(st->cpu_ticks_debt);
 
 	return true;
 }

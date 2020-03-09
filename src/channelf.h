@@ -23,3 +23,20 @@ void CHANNELF_run(void);
 void CHANNELF_init(void);
 
 void CHANNELF_reset(void);
+
+void unsupported_hle_function (void);
+
+struct hle_state_s
+{
+	unsigned char psu1_hle;
+	unsigned char psu2_hle;
+	unsigned char fast_screen_clear;
+	unsigned char screen_clear_row;
+	unsigned char screen_clear_pal;
+	unsigned char screen_clear_color;
+};
+
+extern struct hle_state_s hle_state;
+extern int cpu_ticks_debt;
+
+#define TICKS_PER_FRAME 14914
