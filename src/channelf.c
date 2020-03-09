@@ -23,6 +23,7 @@
 #include "audio.h"
 #include "f2102.h"
 #include "ports.h"
+#include "video.h"
 
 int CHANNELF_loadROM(const char* path, int address)
 {
@@ -56,17 +57,122 @@ int CHANNELF_loadROM_mem(const unsigned char* data, int sz, int address)
 	return 1;
 }
 
+static void hle_clear_row(int row) {
+	memset(VIDEO_Buffer_raw + (row << 7), hle_state.screen_clear_color, 125);
+	VIDEO_Buffer_raw[(row << 7) + 125] = 0;
+	VIDEO_Buffer_raw[(row << 7) + 126] = hle_state.screen_clear_pal;
+	VIDEO_Buffer_raw[(row << 7) + 127] = 0;
+
+}
+
+#define TICKS_PER_ROW 18606
+
+static int CHANNELF_HLE(void)
+{
+	if (hle_state.screen_clear_row) {
+		hle_clear_row(hle_state.screen_clear_row++);
+		if (hle_state.screen_clear_row == 64)
+			hle_state.screen_clear_row = 0;
+		return TICKS_PER_ROW;
+	}
+	switch (PC0) {
+	case 0x0: // init
+		memset (R, 0, sizeof(R));
+		if (Memory[0x800] == 0x55) {
+			A = 0x55;
+			DC0 = 0x801;
+			PC0 = 0x802;
+			R[0x3b] = 0x28;
+			ISAR = 0x3b;
+			return 1459;
+		}
+
+		unsupported_hle_function ();
+		return 14914;
+	case 0x8f: // delay
+	{
+		int ticks = 2563 * R[5];
+		R[5] = 0;
+		R[6] = 0;
+		A = 0xff;
+		PC0 = PC1;
+		return ticks;
+	}
+	case 0xd0: // screen clear
+	{
+		// guesswork
+		switch (R[3]) {
+		case 0xc6:
+			hle_state.screen_clear_pal = 3;
+			hle_state.screen_clear_color = 0;
+			break;
+		case 0x21:
+			hle_state.screen_clear_pal = 0;
+			hle_state.screen_clear_color = 0;
+			break;
+		default:
+			unsupported_hle_function ();
+			return TICKS_PER_FRAME;
+		}
+
+		PC0 = PC1;
+
+		if (hle_state.fast_screen_clear) {
+			int row;
+			for(row=0; row<64; row++)
+				hle_clear_row(row);
+			return TICKS_PER_FRAME;
+		}
+
+		hle_clear_row(0);
+		hle_state.screen_clear_row = 1;
+		
+		return TICKS_PER_ROW;
+	}
+	default:
+		unsupported_hle_function ();
+		return TICKS_PER_FRAME;
+	}
+}
+
+static int is_hle(void) {
+	if (hle_state.screen_clear_row)
+		return 1;
+
+	if (PC0 < 0x400 && hle_state.psu1_hle)
+		return 1;
+
+	if (PC0 >= 0x400 && PC0 < 0x800 && hle_state.psu2_hle) {
+		return 1;
+	}
+
+	if (PC0 == 0xd0 && hle_state.fast_screen_clear
+	    && (R[3] == 0xc6 || R[3] == 0x21))
+		return 1;
+
+	return 0;
+}
+
+struct hle_state_s hle_state;
+int cpu_ticks_debt;
+
 void CHANNELF_run(void) // run for one frame
 {
 	int tick  = 0;
-	int ticks = 0;
+	int ticks = cpu_ticks_debt;
 
-	while(ticks<14914)
-	{ 
-		tick = F8_exec();
-		AUDIO_tick(tick);
+	while(ticks<TICKS_PER_FRAME)
+	{
+		if (is_hle()) {
+			tick = CHANNELF_HLE();
+		} else
+			tick = F8_exec();
+
 		ticks+=tick;
+		AUDIO_tick(tick);
 	}
+
+	cpu_ticks_debt = ticks - TICKS_PER_FRAME;
 }
 
 void CHANNELF_init(void)
