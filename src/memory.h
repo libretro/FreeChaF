@@ -19,7 +19,7 @@
 
 int MEMORY_RAMStart;
 
-unsigned int Memory[0x10000];
+unsigned char Memory[0x10000];
 // sl131253 - 0x000 - 0x3FF
 // sl131254 - 0x400 - 0x7FF
 // cart     - 0x800 - 0x1FFF

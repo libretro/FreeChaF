@@ -14,12 +14,11 @@
 	You should have received a copy of the GNU General Public License
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
+#include <string.h>
 #include "memory.h"
 
 void MEMORY_reset(void)
 {
    /* clear memory */
-   int i;
-   for(i=MEMORY_RAMStart; i<=0xFFFF; i++)
-      Memory[i] = 0; 
+  memset (Memory + MEMORY_RAMStart, 0, 0x10000 - MEMORY_RAMStart);
 }
