@@ -16,18 +16,14 @@
 */
 #include "audio.h"
 
-#include <math.h>
 #include <string.h>
 
-#define Pi 3.14159265
+#include "sintable.h"
 
-short AUDIO_Buffer[735];
+short AUDIO_Buffer[735 * 2];
 
 unsigned char tone = 0; // current tone
 
-static const int sampleRate = 44100;
-static const float framesPerSecond = 59.94; // NTSC
-static const float samplePeriod = 0.00002267573; // 1.0 / sampleRate
 static const int samplesPerFrame = 735; // sampleRate / framesPerSecond
 
 int sampleInCycle = 0; // time since start of tone, resets to 0 after every full cycle
@@ -73,24 +69,24 @@ void AUDIO_tick(int dt) // dt = ticks elapsed since last call
 		AUDIO_Buffer[sample] = 0;
 		if(sample<samplesPerFrame) // output sample
 		{
-			// All tones are multiples of 20 Hz
-			float time = sampleInCycle * samplePeriod;
-			float toneOutput = 0;
+			int toneOutput = 0;
+			// sintable is a 20Hz tone, we need to speed it up to 1000, 500, 120 or 240 Hz
 			switch (tone) {
 			case 1:
-				toneOutput = sin(2*Pi*1000*time) / Pi;
+				toneOutput = 2 * sintable[(sampleInCycle * 50) % SINSAMPLES];
 				break;
 			case 2:
-				toneOutput = sin(2*Pi*500*time) /  Pi;
+				toneOutput = 2 * sintable[(sampleInCycle * 25) % SINSAMPLES];
 				break;
 			case 3:
-				toneOutput = sin(2*Pi*120*time) /  Pi;
-				toneOutput += sin(2*Pi*240*time) /  Pi;
+				toneOutput = sintable[(sampleInCycle * 6) % SINSAMPLES];
+				toneOutput += sintable[(sampleInCycle * 12) % SINSAMPLES];
 				break;
 			}
 
-			AUDIO_Buffer[2 * sample] = (int)(toneOutput * amp);
-			AUDIO_Buffer[2 * sample + 1] = (int)(toneOutput * amp);
+			int res = (toneOutput * amp) / 100000;
+			AUDIO_Buffer[2 * sample] = res;
+			AUDIO_Buffer[2 * sample + 1] = res;
 		}
 		
 		amp *= decay;
@@ -98,7 +94,8 @@ void AUDIO_tick(int dt) // dt = ticks elapsed since last call
 
 		// generate tones //
 		sampleInCycle++;
-		sampleInCycle %= sampleRate / 20;
+		// All tones are multiples of 20 Hz
+		sampleInCycle %= SINSAMPLES;
 	}
 }
 
