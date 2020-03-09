@@ -16,6 +16,7 @@
 */
 
 int CHANNELF_loadROM(const char* path, int address);
+int CHANNELF_loadROM_mem(const unsigned char* data, int sz, int address);
 
 void CHANNELF_run(void);
 

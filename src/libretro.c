@@ -117,7 +117,7 @@ void retro_init(void)
 
 bool retro_load_game(const struct retro_game_info *info)
 {
-	return CHANNELF_loadROM(info->path, 0x800);
+	return CHANNELF_loadROM_mem(info->data, info->size, 0x800);
 }
 
 void retro_unload_game(void)
@@ -343,7 +343,7 @@ void retro_get_system_info(struct retro_system_info *info)
 	info->library_name = "FreeChaF";
 	info->library_version = "1.0";
 	info->valid_extensions = "bin|rom|chf";
-	info->need_fullpath = true;
+	info->need_fullpath = false;
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
