@@ -34,11 +34,6 @@ CORE_DIR	+= .
 TARGET_NAME := freechaf
 SOURCE_DIR := src
 
-ifeq (,$(findstring msvc,$(platform)))
-LIBM			= -lm
-endif
-
-LIBS += $(LIBM)
 
 ifeq ($(ARCHFLAGS),)
 ifeq ($(archs),ppc)
@@ -68,7 +63,6 @@ else ifeq ($(platform), linux-portable)
 	TARGET := $(TARGET_NAME)_libretro.$(EXT)
 	fpic := -fPIC -nostdlib
 	SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T
-	LIBM :=
 else ifneq (,$(findstring osx,$(platform)))
 	TARGET := $(TARGET_NAME)_libretro.dylib
 	fpic := -fPIC
@@ -460,8 +454,6 @@ else
 	SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=$(CORE_DIR)/link.T -Wl,--no-undefined
 	CFLAGS += -D__WIN32__ -D__WIN32_LIBRETRO__ -Wno-missing-field-initializers
 endif
-
-LDFLAGS += $(LIBM)
 
 ifneq ($(platform), sncps3)
 	ifeq (,$(findstring msvc,$(platform)))
