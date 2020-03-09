@@ -32,7 +32,7 @@ unsigned short PC1 = 0; // Program Counter alternate
 unsigned short DC0 = 0; // Data Counter
 unsigned short DC1 = 0; // Data Counter alternate
 unsigned char ISAR = 0; // Indirect Scratchpad Address Register (6-bit)
-unsigned W   = 0; // Status Register (flags)
+unsigned char W   = 0; // Status Register (flags)
 
 int (*OpCodes[0x100])(int);
 

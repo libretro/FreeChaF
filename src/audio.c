@@ -17,28 +17,28 @@
 #include "audio.h"
 
 #include <math.h>
+#include <string.h>
 
 #define Pi 3.14159265
 
-// unsigned int AUDIO_Buffer[735];
+short AUDIO_Buffer[735];
 
-int tone = 0; // current tone
-float toneOutput[] = {0.0, 0.0, 0.0, 0.0}; // tone generator outputs
-float toneCounter = 0.0;
+unsigned char tone = 0; // current tone
 
-float sampleRate = 44100;
-float framesPerSecond = 59.94; // NTSC
-float samplePeriod = 0.00002267573; // 1.0 / sampleRate
-int samplesPerFrame = 735; // sampleRate / framesPerSecond
+static const int sampleRate = 44100;
+static const float framesPerSecond = 59.94; // NTSC
+static const float samplePeriod = 0.00002267573; // 1.0 / sampleRate
+static const int samplesPerFrame = 735; // sampleRate / framesPerSecond
 
-float time = 0.0; // time since start of tone
-float amp = 1.0; // tone amplitude
-float decay = 0.998; // multiplier for amp per sample
+int sampleInCycle = 0; // time since start of tone, resets to 0 after every full cycle
+#define FULL_AMPLITUDE 16384
+short amp = FULL_AMPLITUDE; // tone amplitude (16384 = full)
+static const float decay = 0.998; // multiplier for amp per sample
 
-float ticks = 0.0; // unprocessed ticks
+short ticks = 0; // unprocessed ticks in 1/100 of tick
 int sample = 0; // current sample buffer position
 
-void AUDIO_portReceive(int port, int val)
+void AUDIO_portReceive(int port, unsigned char val)
 {
 	if(port==5)
 	{
@@ -52,8 +52,8 @@ void AUDIO_portReceive(int port, int val)
 		if(val!=tone)
 		{
 			tone = val;
-			amp = 1;
-			time=0;
+			amp = FULL_AMPLITUDE;
+			sampleInCycle=0;
 		}
 	}
 }
@@ -64,27 +64,40 @@ void AUDIO_tick(int dt) // dt = ticks elapsed since last call
 	// at 44.1khz, there are 735 samples per frame
 	// ~20.29 ticks per sample (14913.15 ticks/frame)
 	
-	ticks += (float)dt;
+	ticks += dt * 100;
 
-	while(ticks>20.29)
+	while(ticks>2029)
 	{
-		ticks-=20.29;
+		ticks-=2029;
 		
 		AUDIO_Buffer[sample] = 0;
 		if(sample<samplesPerFrame) // output sample
 		{
-			AUDIO_Buffer[sample] = (int)((toneOutput[tone] * amp)*16384);
+			// All tones are multiples of 20 Hz
+			float time = sampleInCycle * samplePeriod;
+			float toneOutput = 0;
+			switch (tone) {
+			case 1:
+				toneOutput = sin(2*Pi*1000*time) / Pi;
+				break;
+			case 2:
+				toneOutput = sin(2*Pi*500*time) /  Pi;
+				break;
+			case 3:
+				toneOutput = sin(2*Pi*120*time) /  Pi;
+				toneOutput += sin(2*Pi*240*time) /  Pi;
+				break;
+			}
+
+			AUDIO_Buffer[sample] = (int)(toneOutput * amp);
 		}
 		
 		amp *= decay;
 		sample++;
 
 		// generate tones //
-		time += samplePeriod;
-		toneOutput[1] = sin(2*Pi*1000*time) / Pi;
-		toneOutput[2] = sin(2*Pi*500*time) /  Pi;
-		toneOutput[3] = sin(2*Pi*120*time) /  Pi;
-		toneOutput[3]+= sin(2*Pi*240*time) /  Pi;
+		sampleInCycle++;
+		sampleInCycle %= sampleRate / 20;
 	}
 }
 
@@ -101,17 +114,10 @@ void AUDIO_frame(void)
 
 void AUDIO_reset(void)
 {
-	int i;
-
-	// clear buffer
-	for(i=0; i<735; i++)
-		AUDIO_Buffer[i] = 0;
+	memset(AUDIO_Buffer, 0, sizeof(AUDIO_Buffer));
 
 	// reset tone generator
 	tone = 0;
-	toneCounter = 0;
-	for(i=1; i<4; i++)
-		toneOutput[i] = 0;
 
 	// start a new audio frame
 	sample = 0;

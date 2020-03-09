@@ -28,6 +28,9 @@
 #include "audio.h"
 #include "video.h"
 #include "osd.h"
+#include "ports.h"
+#include "controller.h"
+#include "f2102.h"
 
 #define DefaultFPS 60
 #define frameWidth 306
@@ -62,7 +65,7 @@ int joypre1[26]; // joypad 1 previous state
 bool console_input = false;
 
 // at 44.1khz, read 735 samples (44100/60) 
-int audioSamples = 735;
+static const int audioSamples = 735;
 
 static void Keyboard(bool down, unsigned keycode,
       uint32_t character, uint16_t key_modifiers)
@@ -297,7 +300,7 @@ void retro_run(void)
 		offset = (row*3)*306;
 		for(col=0; col<102; col++)
 		{
-			color =  VIDEO_Buffer[row*128+col+4];
+			color =  VIDEO_Buffer_rgb[row*128+col+4];
 			frame[offset]   = color;
 			frame[offset+1] = color;
 			frame[offset+2] = color;
@@ -374,13 +377,134 @@ void retro_reset(void)
 	CHANNELF_reset();
 }
 
+struct serialized_state
+{
+	unsigned char Memory[MEMORY_SIZE];
+	unsigned char R[R_SIZE]; // 64 byte Scratchpad
+	unsigned char VIDEO_Buffer[8192];
+	unsigned char Ports[64];
+
+	unsigned char A; // Accumulator
+	unsigned short PC0; // Program Counter
+	unsigned short PC1; // Program Counter alternate
+	unsigned short DC0; // Data Counter
+	unsigned short DC1; // Data Counter alternate
+	unsigned char ISAR; // Indirect Scratchpad Address Register (6-bit)
+	unsigned char W; // Status Register (flags)
+
+	unsigned short f2102_state;
+	unsigned char f2102_memory[1024];
+	unsigned short f2102_address;
+	unsigned char f2102_rw;
+
+	unsigned char ARM, X, Y, Color;
+	unsigned char ControllerEnabled;
+	unsigned char ControllerSwapped;
+
+	unsigned char console_input;
+	unsigned char tone;
+	unsigned short amp;
+};
+
+size_t retro_serialize_size(void) {
+	return sizeof (struct serialized_state);
+}
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+static inline unsigned short be16(unsigned short v) {
+	return ((v & 0xff) << 8) | ((v & 0xff00) >> 8);
+}
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+static inline unsigned short be16(unsigned short v) {
+	return v;
+}
+#else
+#error What should I do?
+#endif
+
+bool retro_serialize(void *data, size_t size) {
+	if (size < sizeof (struct serialized_state))
+		return false;
+
+	struct serialized_state *st = data;
+	memcpy (st->Memory, Memory, MEMORY_SIZE);
+	memcpy (st->R, R, R_SIZE);
+	memcpy (st->VIDEO_Buffer, VIDEO_Buffer_raw, sizeof(VIDEO_Buffer_raw));
+	memcpy (st->Ports, Ports, sizeof(Ports));
+	memcpy (st->f2102_memory, f2102_memory, sizeof(f2102_memory));
+
+	st->A = A;
+	st->ISAR = ISAR;
+	st->W = W;
+
+	st->PC0 = be16(PC0);
+	st->PC1 = be16(PC1);
+	st->DC0 = be16(DC0);
+	st->DC1 = be16(DC1);
+
+	st->X = X;
+	st->Y = Y;
+	st->Color = Color;
+	st->ARM = ARM;
+
+	st->f2102_rw = f2102_rw;
+	st->f2102_address = be16(f2102_address);
+	st->f2102_state = be16(f2102_state);
+
+	st->ControllerEnabled = ControllerEnabled;
+	st->ControllerSwapped = ControllerSwapped;
+	st->console_input = console_input;
+
+	st->tone = tone;
+	st->amp = be16(amp);
+
+	return true;
+}
+
+bool retro_unserialize(const void *data, size_t size) {
+	if (size < sizeof (struct serialized_state))
+		return false;
+
+	const struct serialized_state *st = data;
+	memcpy (Memory, st->Memory, MEMORY_SIZE);
+	memcpy (R, st->R, R_SIZE);
+	memcpy (VIDEO_Buffer_raw, st->VIDEO_Buffer, sizeof(VIDEO_Buffer_raw));
+	memcpy (Ports, st->Ports, sizeof(Ports));
+	memcpy (f2102_memory, st->f2102_memory, sizeof(f2102_memory));
+
+	A = st->A;
+	ISAR = st->ISAR;
+	W = st->W;
+
+	PC0 = be16(st->PC0);
+	PC1 = be16(st->PC1);
+	DC0 = be16(st->DC0);
+	DC1 = be16(st->DC1);
+
+	X = st->X;
+	Y = st->Y;
+	Color = st->Color;
+	ARM = st->ARM;
+
+	f2102_rw = st->f2102_rw;
+	f2102_address = be16(st->f2102_address);
+	f2102_state = be16(st->f2102_state);
+
+	ControllerEnabled = st->ControllerEnabled;
+	ControllerSwapped = st->ControllerSwapped;
+
+	console_input = st->console_input;
+
+	tone = st->tone;
+	amp = be16(st->amp);
+
+	return true;
+}
+
 /* Stubs */
 unsigned int retro_api_version(void) { return RETRO_API_VERSION; }
 void *retro_get_memory_data(unsigned id) { return NULL; }
 size_t retro_get_memory_size(unsigned id){ return 0; }
-size_t retro_serialize_size(void) { return 0; }
-bool retro_serialize(void *data, size_t size) { return false; }
-bool retro_unserialize(const void *data, size_t size) { return false; }
 void retro_cheat_reset(void) {  }
 void retro_cheat_set(unsigned index, bool enabled, const char *code) {  }
 bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) { return false; }

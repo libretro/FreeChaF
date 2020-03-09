@@ -22,16 +22,16 @@
 #include <stdio.h>
 
 int State[] = {0,0,0};
-int enabled = 0;
+unsigned char ControllerEnabled = 0;
 
 #define Console 0
 #define ControlA 1
 #define ControlB 2
 
-int ConsolePort = 0;
-int ControlAPort = 1;
-int ControlBPort = 4;
-int Swapped = 0;
+static const int ConsolePort = 0;
+#define ControlAPort (ControllerSwapped ? 4 : 1)
+#define ControlBPort (ControllerSwapped ? 1 : 4)
+unsigned char ControllerSwapped = 0;
 
 void setButton(int control, int button, int pressed)
 {
@@ -67,23 +67,19 @@ void CONTROLLER_setInput(int control, int state)
 
 void CONTROLLER_swap(void)
 {
-	int t = ControlAPort;
-	ControlAPort = ControlBPort;
-	ControlBPort = t;
-
-	Swapped ^= 1;
+	ControllerSwapped ^= 1;
 }
 
 int CONTROLLER_swapped(void)
 {
-	return Swapped;
+	return ControllerSwapped;
 }
 
 int CONTROLLER_portRead(int port)
 {
 	if(port==ConsolePort)
 		 return (State[Console]^0xFF) & 0x0F;
-	if(enabled)
+	if(ControllerEnabled)
    {
       if(port==ControlAPort)
          return(State[ControlA]^0xFF);
@@ -93,11 +89,10 @@ int CONTROLLER_portRead(int port)
 	return 0;
 }
 
-void CONTROLLER_portReceive(int port, int val)
+void CONTROLLER_portReceive(int port, unsigned char val)
 {
-	val &=0xFF;
 	if(port==ConsolePort) // Console
-		enabled = (val&0x40)==0;
+		ControllerEnabled = (val&0x40)==0;
 }
 
 /* Console buttons */

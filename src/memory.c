@@ -20,5 +20,5 @@
 void MEMORY_reset(void)
 {
    /* clear memory */
-  memset (Memory + MEMORY_RAMStart, 0, 0x10000 - MEMORY_RAMStart);
+  memset (Memory + MEMORY_RAMStart, 0, MEMORY_SIZE - MEMORY_RAMStart);
 }

@@ -15,68 +15,66 @@
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
 
+#include <string.h>
 #include "f2102.h"
 #include "ports.h"
 
-int state = 0;
-int memory[1024];
-int address = 0;
-int rw = 0;
 
-void F2102_portReceive(int port, int val)
+unsigned short f2102_state = 0;
+unsigned char f2102_memory[1024];
+unsigned short f2102_address = 0;
+unsigned char f2102_rw = 0;
+
+void F2102_portReceive(int port, unsigned char val)
 {
-	val &= 0xFF;
-
 	switch(port)
 	{
 		case 0x20:
 		case 0x24:
-			state = (state & 0xFF) | (val<<8);
+			f2102_state = (f2102_state & 0xFF) | (val<<8);
 
-			rw = val & 1; //read/write bit = val bit 0
+			f2102_rw = val & 1; //read/write bit = val bit 0
 
-			address = address & 0x3F3; // clear address bits 2, 3
-			address = address | (val & 0x04); // address bit 2 = val bit 2
-			address = address | ((val & 0x02)<<2); // address bit 3 = val bit 1
+			f2102_address = f2102_address & 0x3F3; // clear address bits 2, 3
+			f2102_address = f2102_address | (val & 0x04); // address bit 2 = val bit 2
+			f2102_address = f2102_address | ((val & 0x02)<<2); // address bit 3 = val bit 1
 
-			if(rw==0) // read/write bit = 0-read, 1-write
+			if(f2102_rw==0) // read/write bit = 0-read, 1-write
 			{
 				// read - output bit in state bit 15 (port 24 bit 7)
-				state = (state & 0x7FFF) | (memory[address]<<15);
+				f2102_state = (f2102_state & 0x7FFF) | (f2102_memory[f2102_address]<<15);
 			}
 			else
 			{
 				// write
-				memory[address] = (val>>3) & 1; // data = val bit 3
+				f2102_memory[f2102_address] = (val>>3) & 1; // data = val bit 3
 			}
 		break;
 		
 		case 0x21:
 		case 0x25:
-			state = (state & 0xFF00) | (val);
+			f2102_state = (f2102_state & 0xFF00) | (val);
 			
-			address = address & 0x0C; // clear all, save bits 2, 3
+			f2102_address = f2102_address & 0x0C; // clear all, save bits 2, 3
 			// set bits 9,8,7 to val bits 7,6,5
-			address = address | ((val & 0xE0)<<2);
+			f2102_address = f2102_address | ((val & 0xE0)<<2);
 			// set bits 6,5,4 to val bits 3,2,1
-			address = address | ((val & 0x0E)<<3);
+			f2102_address = f2102_address | ((val & 0x0E)<<3);
 			// set bit 1 to val bit 4
-			address = address | ((val&0x10)>>3);
+			f2102_address = f2102_address | ((val&0x10)>>3);
 			// set bit 0 to val bit 0
-			address = address | (val & 1);
+			f2102_address = f2102_address | (val & 1);
 		break;
 	}
 	
 	//poll
-	PORTS_write(0x24, state>>8);
-	PORTS_write(0x25, state & 0xFF);
+	PORTS_write(0x24, f2102_state>>8);
+	PORTS_write(0x25, f2102_state & 0xFF);
 }
 
 void F2102_reset(void)
 {
-	state = 0;
-	address = 0;
-	int i;
-	for(i=0; i<1024; i++)
-		memory[i] = 0;
+	f2102_state = 0;
+	f2102_address = 0;
+	memset (f2102_memory, 0, sizeof(f2102_memory));
 }

@@ -21,6 +21,8 @@
 #include "video.h"
 #include "controller.h"
 
+unsigned char Ports[64];
+
 // Read state of port
 int PORTS_read(int port)
 {
@@ -28,14 +30,14 @@ int PORTS_read(int port)
 }
 
 // Write data to port
-void PORTS_write(int port, int val)
+void PORTS_write(int port, unsigned char val)
 {
-	Ports[port] = val & 0xFF;
+	Ports[port] = val;
 }
 
-void PORTS_notify(int port, int val)
+void PORTS_notify(int port, unsigned char val)
 {
-	Ports[port] = val & 0xFF;
+	Ports[port] = val;
 
 	F2102_portReceive(port, val);
 	AUDIO_portReceive(port, val);
