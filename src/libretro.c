@@ -419,7 +419,6 @@ struct serialized_state
 	unsigned char VIDEO_Buffer[8192];
 	unsigned char Ports[64];
 
-	unsigned char A; // Accumulator
 	unsigned short PC0; // Program Counter
 	unsigned short PC1; // Program Counter alternate
 	unsigned short DC0; // Data Counter
@@ -431,6 +430,7 @@ struct serialized_state
 	unsigned char f2102_memory[1024];
 	unsigned short f2102_address;
 	unsigned char f2102_rw;
+	unsigned char A; // Accumulator
 
 	unsigned char ARM, X, Y, Color;
 	unsigned char ControllerEnabled;
