@@ -546,10 +546,25 @@ bool retro_unserialize(const void *data, size_t size) {
 	return true;
 }
 
+void *retro_get_memory_data(unsigned id) {
+	if (id == RETRO_MEMORY_SYSTEM_RAM)
+		return Memory;
+	if (id == RETRO_MEMORY_VIDEO_RAM)
+		return VIDEO_Buffer_raw;
+
+	return NULL;
+}
+
+size_t retro_get_memory_size(unsigned id) {
+	if (id == RETRO_MEMORY_SYSTEM_RAM)
+		return MEMORY_SIZE;
+	if (id == RETRO_MEMORY_VIDEO_RAM)
+		return sizeof(VIDEO_Buffer_raw);
+	return 0;
+}
+
 /* Stubs */
 unsigned int retro_api_version(void) { return RETRO_API_VERSION; }
-void *retro_get_memory_data(unsigned id) { return NULL; }
-size_t retro_get_memory_size(unsigned id){ return 0; }
 void retro_cheat_reset(void) {  }
 void retro_cheat_set(unsigned index, bool enabled, const char *code) {  }
 bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) { return false; }
