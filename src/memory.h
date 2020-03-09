@@ -17,10 +17,10 @@
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
 
-int MEMORY_RAMStart;
+extern int MEMORY_RAMStart;
 
 #define MEMORY_SIZE 0x10000
-unsigned char Memory[MEMORY_SIZE];
+extern unsigned char Memory[MEMORY_SIZE];
 // sl131253 - 0x000 - 0x3FF
 // sl131254 - 0x400 - 0x7FF
 // cart     - 0x800 - 0x1FFF

@@ -17,6 +17,9 @@
 #include <string.h>
 #include "memory.h"
 
+int MEMORY_RAMStart;
+unsigned char Memory[MEMORY_SIZE];
+
 void MEMORY_reset(void)
 {
    /* clear memory */

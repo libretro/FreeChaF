@@ -47,8 +47,57 @@ retro_audio_sample_t Audio;
 retro_audio_sample_batch_t AudioBatch;
 retro_input_poll_t InputPoll;
 retro_input_state_t InputState;
+struct retro_vfs_interface *vfs_interface;
 
-void retro_set_environment(retro_environment_t fn) { Environ = fn; }
+
+void retro_set_environment(retro_environment_t fn) {
+	Environ = fn;
+
+	struct retro_vfs_interface_info vfs_interface_info;
+	vfs_interface_info.required_interface_version = 1;
+	vfs_interface_info.iface = NULL;
+	if (fn(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info))
+		vfs_interface = vfs_interface_info.iface;
+}
+
+static int CHANNELF_loadROM_libretro(const char* path, int address)
+{
+	if (vfs_interface != NULL) {
+		struct retro_vfs_file_handle *h = vfs_interface->open(
+			path,
+			RETRO_VFS_FILE_ACCESS_READ,
+			RETRO_VFS_FILE_ACCESS_HINT_NONE);
+		if (!h)
+			return 0;
+		ssize_t sz = vfs_interface->size(h);
+		if (sz <= 0)
+			return 0;
+		if (sz > MEMORY_SIZE - address)
+			sz = MEMORY_SIZE - address;
+		sz = vfs_interface->read(h, Memory + address, sz);
+		vfs_interface->close(h);
+		if (sz <= 0)
+			return 0;
+
+		if (address+sz>MEMORY_RAMStart) { MEMORY_RAMStart = address+sz; }
+
+		return 1;
+	}
+
+	FILE *f = fopen(path, "rb");
+	if (!f)
+		return 0;
+	ssize_t sz = fread(Memory + address, 1, MEMORY_SIZE - address, f);
+	fclose(f);
+	if (sz <= 0)
+		return 0;
+
+	if (address+sz>MEMORY_RAMStart) { MEMORY_RAMStart = address+sz; }
+
+	return 1;
+}
+
+
 void retro_set_video_refresh(retro_video_refresh_t fn) { Video = fn; }
 void retro_set_audio_sample(retro_audio_sample_t fn) { Audio = fn; }
 void retro_set_audio_sample_batch(retro_audio_sample_batch_t fn) { AudioBatch = fn; }
@@ -93,13 +142,13 @@ void retro_init(void)
 
 	// load PSU 1 Update
 	fill_pathname_join(PSU_1_Update_Path, SystemPath, "sl90025.bin", PATH_MAX_LENGTH);
-	if(!CHANNELF_loadROM(PSU_1_Update_Path, 0))
+	if(!CHANNELF_loadROM_libretro(PSU_1_Update_Path, 0))
 	{
 		printf("[ERROR] [FREECHAF] Failed loading Channel F II BIOS(1) from: %s\n", PSU_1_Update_Path);
 		
 		// load PSU 1 Original
 		fill_pathname_join(PSU_1_Path, SystemPath, "sl31253.bin", PATH_MAX_LENGTH);
-		if(!CHANNELF_loadROM(PSU_1_Path, 0))
+		if(!CHANNELF_loadROM_libretro(PSU_1_Path, 0))
 		{
 			printf("[ERROR] [FREECHAF] Failed loading Channel F BIOS(1) from: %s\n", PSU_1_Path);
 			exit(0);
@@ -108,7 +157,7 @@ void retro_init(void)
 
 	// load PSU 2
 	fill_pathname_join(PSU_2_Path, SystemPath, "sl31254.bin", PATH_MAX_LENGTH);
-	if(!CHANNELF_loadROM(PSU_2_Path, 0x400))
+	if(!CHANNELF_loadROM_libretro(PSU_2_Path, 0x400))
 	{
 		printf("[ERROR] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
 		exit(0);
@@ -497,10 +546,25 @@ bool retro_unserialize(const void *data, size_t size) {
 	return true;
 }
 
+void *retro_get_memory_data(unsigned id) {
+	if (id == RETRO_MEMORY_SYSTEM_RAM)
+		return Memory;
+	if (id == RETRO_MEMORY_VIDEO_RAM)
+		return VIDEO_Buffer_raw;
+
+	return NULL;
+}
+
+size_t retro_get_memory_size(unsigned id) {
+	if (id == RETRO_MEMORY_SYSTEM_RAM)
+		return MEMORY_SIZE;
+	if (id == RETRO_MEMORY_VIDEO_RAM)
+		return sizeof(VIDEO_Buffer_raw);
+	return 0;
+}
+
 /* Stubs */
 unsigned int retro_api_version(void) { return RETRO_API_VERSION; }
-void *retro_get_memory_data(unsigned id) { return NULL; }
-size_t retro_get_memory_size(unsigned id){ return 0; }
 void retro_cheat_reset(void) {  }
 void retro_cheat_set(unsigned index, bool enabled, const char *code) {  }
 bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) { return false; }

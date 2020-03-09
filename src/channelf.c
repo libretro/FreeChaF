@@ -16,6 +16,7 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "channelf.h"
 #include "memory.h"
 #include "f8.h"
@@ -45,11 +46,12 @@ int CHANNELF_loadROM(const char* path, int address)
 
 int CHANNELF_loadROM_mem(const unsigned char* data, int sz, int address)
 {
-	int pos = 0;
-	for(pos = 0; pos < sz && address<0x10000; pos++, address++)
-		Memory[address] = data[pos];
+	int l = sz;
+	if (l > 0x10000 - address)
+		l = 0x10000 - address;
+	memcpy(Memory + address, data, l);
 		
-	if (address>MEMORY_RAMStart) { MEMORY_RAMStart = address; }
+	if (address+l>MEMORY_RAMStart) { MEMORY_RAMStart = address+l; }
 
 	return 1;
 }
