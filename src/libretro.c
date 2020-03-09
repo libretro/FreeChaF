@@ -116,18 +116,11 @@ bool console_input = false;
 // at 44.1khz, read 735 samples (44100/60) 
 static const int audioSamples = 735;
 
-static void Keyboard(bool down, unsigned keycode,
-      uint32_t character, uint16_t key_modifiers)
-{
-	/* Keyboard Input */
-}
-
 void retro_init(void)
 {
 	char PSU_1_Update_Path[PATH_MAX_LENGTH];
 	char PSU_1_Path[PATH_MAX_LENGTH];
 	char PSU_2_Path[PATH_MAX_LENGTH];
-	struct retro_keyboard_callback kb = { Keyboard };
 
 	// init buffers, structs
 	memset(frame, 0, frameSize*sizeof(unsigned int));
@@ -162,9 +155,6 @@ void retro_init(void)
 		printf("[ERROR] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
 		exit(0);
 	}
-
-	// Setup keyboard input
-	Environ(RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK, &kb);
 }
 
 bool retro_load_game(const struct retro_game_info *info)
