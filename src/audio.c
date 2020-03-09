@@ -89,7 +89,8 @@ void AUDIO_tick(int dt) // dt = ticks elapsed since last call
 				break;
 			}
 
-			AUDIO_Buffer[sample] = (int)(toneOutput * amp);
+			AUDIO_Buffer[2 * sample] = (int)(toneOutput * amp);
+			AUDIO_Buffer[2 * sample + 1] = (int)(toneOutput * amp);
 		}
 		
 		amp *= decay;

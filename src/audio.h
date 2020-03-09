@@ -17,7 +17,7 @@
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
 
-extern short AUDIO_Buffer[735];
+extern short AUDIO_Buffer[735 * 2];
 extern unsigned char tone;
 extern short amp;
 

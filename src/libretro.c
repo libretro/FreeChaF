@@ -281,11 +281,7 @@ void retro_run(void)
 	// grab frame
 	CHANNELF_run();
 
-	// sample audio from buffer
-	for(i=0; i<audioSamples; i++)
-	{
-		Audio(AUDIO_Buffer[i], AUDIO_Buffer[i]); // Audio(left, right)
-	}
+	AudioBatch (AUDIO_Buffer, audioSamples);
 	AUDIO_frame(); // notify audio to start new audio frame
 
 	// send frame to libretro
