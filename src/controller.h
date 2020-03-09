@@ -17,7 +17,7 @@
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
 
-void CONTROLLER_portReceive(int port, int val);
+void CONTROLLER_portReceive(int port, unsigned char val);
 
 int CONTROLLER_portRead(int port);
 
@@ -32,5 +32,8 @@ int CONTROLLER_cursorPos(void);
 int CONTROLLER_cursorDown(void);
 
 int CONTROLLER_swapped(void);
+
+extern unsigned char ControllerEnabled;
+extern unsigned char ControllerSwapped;
 
 #endif

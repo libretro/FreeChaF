@@ -18,13 +18,13 @@
 */
 
 // IO Ports 
-int Ports[64];
+extern unsigned char Ports[64];
 
 int PORTS_read(int port);
 
-void PORTS_write(int port, int val);
+void PORTS_write(int port, unsigned char val);
 
-void PORTS_notify(int port, int val);
+void PORTS_notify(int port, unsigned char val);
 
 void PORTS_reset(void);
 

@@ -17,15 +17,15 @@
 
 #include "video.h"
 
-//int VIDEO_Buffer[8192]; // 128x64
-unsigned int buffer[8192]; // 128x64
-unsigned int colors[8] = {0x101010, 0xFDFDFD, 0x5331FF, 0x5DCC02, 0xF33F4B, 0xE0E0E0, 0xA6FF91, 0xD0CEFF};
-unsigned int palette[16] = {0,1,1,1, 7,2,4,3, 6,2,4,3, 5,2,4,3}; // bk wh wh wh, bl B G R, gr B G R, gy B G R...
+unsigned int VIDEO_Buffer_rgb[8192]; // 128x64
+unsigned char VIDEO_Buffer_raw[8192]; // 128x64
+static const unsigned int colors[8] = {0x101010, 0xFDFDFD, 0x5331FF, 0x5DCC02, 0xF33F4B, 0xE0E0E0, 0xA6FF91, 0xD0CEFF};
+static const unsigned int palette[16] = {0,1,1,1, 7,2,4,3, 6,2,4,3, 5,2,4,3}; // bk wh wh wh, bl B G R, gr B G R, gy B G R...
 
-int ARM = 0;
-int X = 0;
-int Y = 0;
-int Color = 2; 
+unsigned char ARM = 0;
+unsigned char X = 0;
+unsigned char Y = 0;
+unsigned char Color = 2; 
 
 void VIDEO_drawFrame(void)
 {
@@ -43,13 +43,13 @@ void VIDEO_drawFrame(void)
 		// (palette is shifted by two and added to 'color'
 		//  to find palette index which holds the color's index)
 		
-		pal = ((buffer[(row<<7)+125]&2)>>1) | (buffer[(row<<7)+126]&3);
+		pal = ((VIDEO_Buffer_raw[(row<<7)+125]&2)>>1) | (VIDEO_Buffer_raw[(row<<7)+126]&3);
 		pal = (pal<<2) & 0xC;
 		
 		for(col=0; col<128; col++)
 		{
-			color = (buffer[(row<<7)+col]) & 0x3;
-			VIDEO_Buffer[(row<<7)+col] = colors[palette[pal|color]&0x7];
+			color = (VIDEO_Buffer_raw[(row<<7)+col]) & 0x3;
+			VIDEO_Buffer_rgb[(row<<7)+col] = colors[palette[pal|color]&0x7];
 		}
 	}
 
@@ -64,7 +64,7 @@ void VIDEO_portReceive(int port, int val)
 			if(val==0x40 && ARM==0x60) // Strobed
 			{
 				// Write to display buffer
-				buffer[(Y<<7)+X] = Color;
+				VIDEO_Buffer_raw[(Y<<7)+X] = Color;
 			}
 			ARM = val;
 		break;

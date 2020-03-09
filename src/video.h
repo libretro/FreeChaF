@@ -17,7 +17,14 @@
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
 
-unsigned int VIDEO_Buffer[8192]; // 128x64
+// 128x64
+#define VIDEO_SIZE 8192
+extern unsigned char VIDEO_Buffer_raw[VIDEO_SIZE];
+extern unsigned int VIDEO_Buffer_rgb[VIDEO_SIZE];
+extern unsigned char ARM;
+extern unsigned char X;
+extern unsigned char Y;
+extern unsigned char Color;
 
 void VIDEO_portReceive(int port, int val);
 

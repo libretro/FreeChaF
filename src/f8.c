@@ -24,24 +24,27 @@
 #include "memory.h"
 #include "ports.h"
 
-int R[64]; // 64 byte Scratchpad
+unsigned char R[64]; // 64 byte Scratchpad
 
-int A   = 0; // Accumulator
-int PC0 = 0; // Program Counter
-int PC1 = 0; // Program Counter alternate
-int DC0 = 0; // Data Counter
-int DC1 = 0; // Data Counter alternate
-int ISAR= 0; // Indirect Scratchpad Address Register (6-bit)
-int W   = 0; // Status Register (flags)
+unsigned char A   = 0; // Accumulator
+unsigned short PC0 = 0; // Program Counter
+unsigned short PC1 = 0; // Program Counter alternate
+unsigned short DC0 = 0; // Data Counter
+unsigned short DC1 = 0; // Data Counter alternate
+unsigned char ISAR = 0; // Indirect Scratchpad Address Register (6-bit)
+unsigned char W   = 0; // Status Register (flags)
 
 int (*OpCodes[0x100])(int);
 
 // Flags
-#define flag_Sign 0
-#define flag_Zero 2
-#define flag_Overflow 3
-#define flag_Carry 1
-#define flag_Interupt 4
+enum
+  {
+   flag_Sign = 0,
+   flag_Zero = 2,
+   flag_Overflow = 3,
+   flag_Carry = 1,
+   flag_Interupt = 4
+  };
 
 /* *****************************
    *

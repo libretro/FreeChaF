@@ -43,6 +43,17 @@ int CHANNELF_loadROM(const char* path, int address)
    return 0;
 }
 
+int CHANNELF_loadROM_mem(const unsigned char* data, int sz, int address)
+{
+	int pos = 0;
+	for(pos = 0; pos < sz && address<0x10000; pos++, address++)
+		Memory[address] = data[pos];
+		
+	if (address>MEMORY_RAMStart) { MEMORY_RAMStart = address; }
+
+	return 1;
+}
+
 void CHANNELF_run(void) // run for one frame
 {
 	int tick  = 0;

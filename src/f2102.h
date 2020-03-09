@@ -17,8 +17,13 @@
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
 
-void F2102_portReceive(int port, int val);
+void F2102_portReceive(int port, unsigned char val);
 
 void F2102_reset(void);
+
+extern unsigned short f2102_state;
+extern unsigned char f2102_memory[1024];
+extern unsigned short f2102_address;
+extern unsigned char f2102_rw;
 
 #endif
