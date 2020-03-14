@@ -243,6 +243,14 @@ else ifeq ($(platform), emscripten)
 	SHARED := -shared -r
 	STATIC_LINKING=1
 
+# PSP
+else ifeq ($(platform), psp1)
+	TARGET := $(TARGET_NAME)_libretro_$(platform).a
+	CC = psp-gcc
+	AR = psp-ar
+	CFLAGS += -G0 -DPSP
+	STATIC_LINKING=1
+
 # Playstation Vita
 else ifeq ($(platform), vita)
 	TARGET := $(TARGET_NAME)_libretro_$(platform).a
