@@ -38,7 +38,7 @@
 #define frameHeight 192
 #define frameSize 58752
 
-unsigned int frame[frameSize];
+pixel_t frame[frameSize];
 
 char *SystemPath;
 
@@ -176,7 +176,7 @@ void retro_init(void)
 	char PSU_2_Path[PATH_MAX_LENGTH];
 
 	// init buffers, structs
-	memset(frame, 0, frameSize*sizeof(unsigned int));
+	memset(frame, 0, frameSize*sizeof(pixel_t));
 
 	OSD_setDisplay(frame, frameWidth, frameHeight);
 
@@ -434,7 +434,7 @@ void retro_run(void)
 		 OSD_drawConsole(CONTROLLER_cursorPos(), CONTROLLER_cursorDown());
 	}
 	// Output video
-	Video(frame, frameWidth, frameHeight, sizeof(unsigned int) * frameWidth);
+	Video(frame, frameWidth, frameHeight, sizeof(pixel_t) * frameWidth);
 }
 
 unsigned retro_get_region(void)
@@ -453,7 +453,11 @@ void retro_get_system_info(struct retro_system_info *info)
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-   int pixelformat = RETRO_PIXEL_FORMAT_XRGB8888;
+#ifdef USE_RGB565
+	int pixelformat = RETRO_PIXEL_FORMAT_RGB565;
+#else
+	int pixelformat = RETRO_PIXEL_FORMAT_XRGB8888;
+#endif	
 
 	memset(info, 0, sizeof(*info));
 	info->geometry.base_width   = frameWidth;

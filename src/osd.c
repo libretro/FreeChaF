@@ -17,14 +17,15 @@
 
 #include <string.h>
 #include "osd.h"
+#include "video.h"
 
 unsigned int DisplayWidth = 0;
 unsigned int DisplayHeight = 0;
-unsigned int DisplayColor[] = {0, 0xFFFFFF};
+pixel_t DisplayColor[] = {BLACK, WHITE};
 unsigned int DisplaySize = 0;
-unsigned int *Frame;
+pixel_t *Frame;
 
-void OSD_setDisplay(unsigned int frame[], unsigned int width, unsigned int height)
+void OSD_setDisplay(pixel_t frame[], unsigned int width, unsigned int height)
 {
 	Frame = frame;
 	DisplayWidth = width;
@@ -32,12 +33,12 @@ void OSD_setDisplay(unsigned int frame[], unsigned int width, unsigned int heigh
 	DisplaySize = width*height;
 }
 
-void OSD_setColor(unsigned int color)
+void OSD_setColor(pixel_t color)
 {
 	DisplayColor[1] = color;
 }
 
-void OSD_setBackground(unsigned int color)
+void OSD_setBackground(pixel_t color)
 {
 	DisplayColor[0] = color;
 }
@@ -232,36 +233,36 @@ void OSD_drawConsole(int pos, int down)
 	int x           = (DisplayWidth-98)/2;
 	int y           = (DisplayHeight-50);
 
-	DisplayColor[1] = 0x000000;
+	DisplayColor[1] = BLACK;
 	OSD_FillBox(x, y, 98, 21);
-	DisplayColor[1] = 0xFFFFFF;
+	DisplayColor[1] = WHITE;
 	OSD_Box(x, y, 98, 21);
 
 	x += 3;
 	y += 3;
-	DisplayColor[1] = 0xFFFF00;
+	DisplayColor[1] = YELLOW;
 	OSD_FillBox(x, y, 16, 16);
-	DisplayColor[1] = 0x000000;
+	DisplayColor[1] = BLACK;
 	OSD_drawLetter(x+4, y+4, 'R');
 	
 	for(i=0; i<4; i++)
 	{
 		x+=19;
-		DisplayColor[1] = 0xCCCCCC;
+		DisplayColor[1] = GRAY_CC;
 		OSD_FillBox(x, y, 16, 16);
-		DisplayColor[1] = 0x000000;
+		DisplayColor[1] = BLACK;
 		OSD_drawLetter(x+4, y+4, 48+(i+1));
 	}
 	
 	// draw cursor
 	x = x-76;
-	DisplayColor[1] = 0x00FF00;
+	DisplayColor[1] = GREEN;
 	OSD_Box(x+(19*pos)-1, y-1, 17, 17);
 	if(down)
 		OSD_Box(x+(19*pos), y, 15, 15);
 
-	DisplayColor[0] = 0x000000;
-	DisplayColor[1] = 0xFFFFFF;
+	DisplayColor[0] = BLACK;
+	DisplayColor[1] = WHITE;
 
 	switch(pos)
    {
