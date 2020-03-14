@@ -248,7 +248,8 @@ else ifeq ($(platform), psp1)
 	TARGET := $(TARGET_NAME)_libretro_$(platform).a
 	CC = psp-gcc
 	AR = psp-ar
-	CFLAGS += -G0 -DPSP
+	CFLAGS += -G0 -DPSP -DUSE_RGB565
+	CXXFLAGS += -G0 -DPSP -DUSE_RGB565
 	STATIC_LINKING=1
 
 # Playstation Vita
