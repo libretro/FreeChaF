@@ -18,12 +18,13 @@
 */
 
 // On-Screen Display //
+#include "video.h"
 
-void OSD_setDisplay(unsigned int frame[], unsigned int width, unsigned int height);
+void OSD_setDisplay(pixel_t frame[], unsigned int width, unsigned int height);
 
-void OSD_setColor(unsigned int color);
+void OSD_setColor(pixel_t color);
 
-void OSD_setBackground(unsigned int color);
+void OSD_setBackground(pixel_t color);
 
 void OSD_HLine(int x, int y, int len);
 

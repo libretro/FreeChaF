@@ -35,10 +35,16 @@
 
 #define DefaultFPS 60
 #define frameWidth 306
+#ifdef PSP
+// Workaround for a psp1 gfx driver.
+#define framePitchPixel 320
+#else
+#define framePitchPixel frameWidth
+#endif
 #define frameHeight 192
-#define frameSize 58752
+#define frameSize (framePitchPixel * frameHeight)
 
-unsigned int frame[frameSize];
+pixel_t frame[frameSize];
 
 char *SystemPath;
 
@@ -176,9 +182,9 @@ void retro_init(void)
 	char PSU_2_Path[PATH_MAX_LENGTH];
 
 	// init buffers, structs
-	memset(frame, 0, frameSize*sizeof(unsigned int));
+	memset(frame, 0, frameSize*sizeof(pixel_t));
 
-	OSD_setDisplay(frame, frameWidth, frameHeight);
+	OSD_setDisplay(frame, framePitchPixel, frameHeight);
 
 	// init console
 	CHANNELF_init();
@@ -399,7 +405,7 @@ void retro_run(void)
 	int col;
 	for(row=0; row<64; row++)
 	{
-		offset = (row*3)*306;
+		offset = (row*3)*framePitchPixel;
 		for(col=0; col<102; col++)
 		{
 			color =  VIDEO_Buffer_rgb[row*128+col+4];
@@ -407,13 +413,13 @@ void retro_run(void)
 			frame[offset+1] = color;
 			frame[offset+2] = color;
 
-			frame[offset+306] = color;
-			frame[offset+307] = color;
-			frame[offset+308] = color;
+			frame[offset+framePitchPixel] = color;
+			frame[offset+framePitchPixel+1] = color;
+			frame[offset+framePitchPixel+2] = color;
 
-			frame[offset+612] = color;
-			frame[offset+613] = color;
-			frame[offset+614] = color;
+			frame[offset+2*framePitchPixel] = color;
+			frame[offset+2*framePitchPixel+1] = color;
+			frame[offset+2*framePitchPixel+2] = color;
 			offset+=3;
 		}
 	}
@@ -434,7 +440,7 @@ void retro_run(void)
 		 OSD_drawConsole(CONTROLLER_cursorPos(), CONTROLLER_cursorDown());
 	}
 	// Output video
-	Video(frame, frameWidth, frameHeight, sizeof(unsigned int) * frameWidth);
+	Video(frame, frameWidth, frameHeight, sizeof(pixel_t) * framePitchPixel);
 }
 
 unsigned retro_get_region(void)
@@ -453,7 +459,11 @@ void retro_get_system_info(struct retro_system_info *info)
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-   int pixelformat = RETRO_PIXEL_FORMAT_XRGB8888;
+#ifdef USE_RGB565
+	int pixelformat = RETRO_PIXEL_FORMAT_RGB565;
+#else
+	int pixelformat = RETRO_PIXEL_FORMAT_XRGB8888;
+#endif	
 
 	memset(info, 0, sizeof(*info));
 	info->geometry.base_width   = frameWidth;

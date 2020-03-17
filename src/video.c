@@ -17,9 +17,19 @@
 
 #include "video.h"
 
-unsigned int VIDEO_Buffer_rgb[8192]; // 128x64
+pixel_t VIDEO_Buffer_rgb[8192]; // 128x64
 unsigned char VIDEO_Buffer_raw[8192]; // 128x64
-static const unsigned int colors[8] = {0x101010, 0xFDFDFD, 0x5331FF, 0x5DCC02, 0xF33F4B, 0xE0E0E0, 0xA6FF91, 0xD0CEFF};
+static const pixel_t colors[8] =
+  {
+	  RGB(0x10, 0x10, 0x10),
+	  RGB(0xFD, 0xFD, 0xFD),
+	  RGB(0x53, 0x31, 0xFF),
+	  RGB(0x5D, 0xCC, 0x02),
+	  RGB(0xF3, 0x3F, 0x4B),
+	  RGB(0xE0, 0xE0, 0xE0),
+	  RGB(0xA6, 0xFF, 0x91),
+	  RGB(0xD0, 0xCE, 0xFF)
+  };
 static const unsigned int palette[16] = {0,1,1,1, 7,2,4,3, 6,2,4,3, 5,2,4,3}; // bk wh wh wh, bl B G R, gr B G R, gy B G R...
 
 unsigned char ARM = 0;
