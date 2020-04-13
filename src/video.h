@@ -31,17 +31,17 @@ void VIDEO_drawFrame(void);
 
 #ifdef USE_RGB565
 typedef unsigned short pixel_t;
-#define RGB(r,g,b) ((((r) & 0xf8) << 8) | (((g) & 0xfc) << 3) | (((b) & 0xf8) >> 3))
+#define vRGB(r,g,b) ((((r) & 0xf8) << 8) | (((g) & 0xfc) << 3) | (((b) & 0xf8) >> 3))
 #else
 typedef unsigned int pixel_t;
-#define RGB(r,g,b) (((r) << 16) | ((g) << 8) | (b))
+#define vRGB(r,g,b) (((r) << 16) | ((g) << 8) | (b))
 #endif
 
-#define BLACK RGB(0,0,0)
-#define WHITE RGB(0xff, 0xff, 0xff)
-#define YELLOW RGB(0xff, 0xff, 0)
-#define GRAY_CC RGB(0xCC, 0xCC, 0xCC)
-#define GREEN RGB(0, 0xff, 0)
+#define BLACK vRGB(0,0,0)
+#define WHITE vRGB(0xff, 0xff, 0xff)
+#define YELLOW vRGB(0xff, 0xff, 0)
+#define GRAY_CC vRGB(0xCC, 0xCC, 0xCC)
+#define GREEN vRGB(0, 0xff, 0)
 
 extern pixel_t VIDEO_Buffer_rgb[VIDEO_SIZE]; // 128x64
 
