@@ -1,3 +1,6 @@
+#ifndef CHANNELF_HLE_H
+#define CHANNELF_HLE_H
+
 /*
 	This file is part of FreeChaF.
 
@@ -15,18 +18,22 @@
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
 
-extern retro_log_printf_t channelf_log;
+void CHANNELF_HLE_run(void);
 
-extern int CPU_Ticks_Debt;
+//static int is_hle(void);
 
-int CHANNELF_loadROM(const char* path, int address);
+void unsupported_hle_function(void);
 
-int CHANNELF_loadROM_mem(const unsigned char* data, int sz, int address);
+struct hle_state_s
+{
+	unsigned char psu1_hle;
+	unsigned char psu2_hle;
+	unsigned char fast_screen_clear;
+	unsigned char screen_clear_row;
+	unsigned char screen_clear_pal;
+	unsigned char screen_clear_color;
+};
 
-void CHANNELF_run(void);
+extern struct hle_state_s hle_state;
 
-void CHANNELF_init(void);
-
-void CHANNELF_reset(void);
-
-#define TICKS_PER_FRAME 14914
+#endif

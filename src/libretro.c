@@ -32,21 +32,25 @@
 #include "ports.h"
 #include "controller.h"
 #include "f2102.h"
+#include "channelf_hle.h"
 
 #define DefaultFPS 60
 #define frameWidth 306
+#define frameHeight 192
+#define frameSize (framePitchPixel * frameHeight)
+
 #ifdef PSP
 // Workaround for a psp1 gfx driver.
 #define framePitchPixel 320
 #else
 #define framePitchPixel frameWidth
 #endif
-#define frameHeight 192
-#define frameSize (framePitchPixel * frameHeight)
 
 pixel_t frame[frameSize];
 
 char *SystemPath;
+
+struct hle_state_s hle_state;
 
 retro_environment_t Environ;
 retro_video_refresh_t Video;
@@ -59,29 +63,31 @@ struct retro_vfs_interface *vfs_interface;
 static void fallback_log(enum retro_log_level level, const char *fmt, ...)
 {
 	va_list va;
-
 	(void)level;
-
 	va_start(va, fmt);
 	vfprintf(stderr, fmt, va);
 	va_end(va);
 }
 
-static retro_log_printf_t log_cb = fallback_log;
-
-void retro_set_environment(retro_environment_t fn) {
-	struct retro_log_callback logging;
-
+void retro_set_environment(retro_environment_t fn)
+{
 	Environ = fn;
+
+	struct retro_log_callback logging;
 
 	struct retro_vfs_interface_info vfs_interface_info;
 	vfs_interface_info.required_interface_version = 1;
 	vfs_interface_info.iface = NULL;
 	if (fn(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info))
+	{
 		vfs_interface = vfs_interface_info.iface;
+	}
 
+	channelf_log = fallback_log;
 	if (fn(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &logging))
-		log_cb = logging.log;
+	{
+		channelf_log = logging.log;
+	}
 
 	static struct retro_variable variables[] =
 		{
@@ -101,44 +107,46 @@ static void update_variables(void)
 	var.key = "freechaf_fast_scrclr";
 	var.value = NULL;
 
-	hle_state.fast_screen_clear = (Environ(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) && strcmp (var.value, "enabled") == 0;
+	hle_state.fast_screen_clear = (Environ(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) && strcmp(var.value, "enabled") == 0;
 }
 
 static int CHANNELF_loadROM_libretro(const char* path, int address)
 {
-	if (vfs_interface != NULL) {
-		struct retro_vfs_file_handle *h = vfs_interface->open(
-			path,
-			RETRO_VFS_FILE_ACCESS_READ,
-			RETRO_VFS_FILE_ACCESS_HINT_NONE);
-		if (!h)
+	if (vfs_interface != NULL) // load rom using Libretro's vfs interface
+	{
+		struct retro_vfs_file_handle *h = vfs_interface->open(path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_NONE);
+		if (!h) // problem loading file
+		{
 			return 0;
-		ssize_t sz = vfs_interface->size(h);
-		if (sz <= 0)
-			return 0;
-		if (sz > MEMORY_SIZE - address)
-			sz = MEMORY_SIZE - address;
-		sz = vfs_interface->read(h, Memory + address, sz);
-		vfs_interface->close(h);
-		if (sz <= 0)
-			return 0;
+		}
 
-		if (address+sz>MEMORY_RAMStart) { MEMORY_RAMStart = address+sz; }
+		ssize_t size = vfs_interface->size(h);
+		if (size <= 0) // problem loading file
+		{
+			return 0;
+		}
+		if (size > MEMORY_SIZE - address) // if too large to fit in memory...
+		{
+			size = MEMORY_SIZE - address;
+		}
+
+		size = vfs_interface->read(h, Memory + address, size);
+		vfs_interface->close(h);
+		if (size <= 0) // problem reading file
+		{
+			return 0;
+		}
+
+		if (address+size>MEMORY_RAMStart) 
+		{
+			MEMORY_RAMStart = address+size;
+		}
 
 		return 1;
 	}
-
-	FILE *f = fopen(path, "rb");
-	if (!f)
-		return 0;
-	ssize_t sz = fread(Memory + address, 1, MEMORY_SIZE - address, f);
-	fclose(f);
-	if (sz <= 0)
-		return 0;
-
-	if (address+sz>MEMORY_RAMStart) { MEMORY_RAMStart = address+sz; }
-
-	return 1;
+	
+	// If we can't use Libretro's vfs interface to load the rom, do things the old way ... 
+	return CHANNELF_loadROM(path, address);
 }
 
 
@@ -159,21 +167,6 @@ bool console_input = false;
 
 // at 44.1khz, read 735 samples (44100/60) 
 static const int audioSamples = 735;
-
-void unsupported_hle_function ()
-{
-	char formatted[1024];
-	struct retro_message msg;
-	snprintf(formatted, sizeof(formatted) - 1, "Unsupported HLE function: 0x%x", PC0);
-
-	log_cb(RETRO_LOG_ERROR, "Unsupported HLE function: 0x%x\n", PC0);
-	msg.msg    = formatted;
-	msg.frames = 600;
-	if (log_cb)
-		log_cb(RETRO_LOG_ERROR, "%s\n", formatted);
-	Environ(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
-	Environ(RETRO_ENVIRONMENT_SHUTDOWN, NULL);
-}
 
 void retro_init(void)
 {
@@ -196,15 +189,15 @@ void retro_init(void)
 	fill_pathname_join(PSU_1_Update_Path, SystemPath, "sl90025.bin", PATH_MAX_LENGTH);
 	if(!CHANNELF_loadROM_libretro(PSU_1_Update_Path, 0))
 	{
-		log_cb(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F II BIOS(1) from: %s\n", PSU_1_Update_Path);
+		channelf_log(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F II BIOS(1) from: %s\n", PSU_1_Update_Path);
 		
 		// load PSU 1 Original
 		fill_pathname_join(PSU_1_Path, SystemPath, "sl31253.bin", PATH_MAX_LENGTH);
 		if(!CHANNELF_loadROM_libretro(PSU_1_Path, 0))
 		{
-			log_cb(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(1) from: %s\n", PSU_1_Path);
+			channelf_log(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(1) from: %s\n", PSU_1_Path);
+			channelf_log(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Switching to HLE for PSU1\n");
 			hle_state.psu1_hle = true;
-			log_cb(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Switching to HLE for PSU1\n");			
 		}
 	}
 
@@ -212,17 +205,39 @@ void retro_init(void)
 	fill_pathname_join(PSU_2_Path, SystemPath, "sl31254.bin", PATH_MAX_LENGTH);
 	if(!CHANNELF_loadROM_libretro(PSU_2_Path, 0x400))
 	{
-		log_cb(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
+		channelf_log(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
+		channelf_log(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Switching to HLE for PSU2\n");
 		hle_state.psu2_hle = true;
-		log_cb(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Switching to HLE for PSU2\n");			
 	}
 
-	if (hle_state.psu1_hle || hle_state.psu2_hle) {
+	if (hle_state.psu1_hle || hle_state.psu2_hle)
+	{
 			struct retro_message msg;
 			msg.msg    = "Couldn't load BIOS. Using experimental HLE mode. In case of problem please use BIOS";
 			msg.frames = 600;
 			Environ(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
 	}
+}
+
+static int is_hle(void)
+{
+	if (hle_state.screen_clear_row)
+		return 1;
+
+	if (PC0 < 0x400 && hle_state.psu1_hle)
+		return 1;
+
+	if (PC0 >= 0x400 && PC0 < 0x800 && hle_state.psu2_hle)
+	{
+		return 1;
+	}
+
+	if (PC0 == 0xd0 && hle_state.fast_screen_clear && (R[3] == 0xc6 || R[3] == 0x21))
+	{
+		return 1;
+	}
+
+	return 0;
 }
 
 bool retro_load_game(const struct retro_game_info *info)
@@ -242,7 +257,9 @@ void retro_run(void)
 
 	bool updated = false;
 	if (Environ(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+	{
 		update_variables();
+	}
 
 	InputPoll();
 
@@ -328,28 +345,16 @@ void retro_run(void)
 
 	if(console_input) // console input
 	{
-		if((joypad0[2]==1 && joypre0[2]==0) || (joypad1[2]==1 && joypre1[2]==0)) // left
-		{
-			CONTROLLER_consoleInput(0, 1);
-		}
-		if((joypad0[20]==1 && joypre0[20]==0) || (joypad1[20]==1 && joypre1[20]==0)) // left analog left
-		{
-			CONTROLLER_consoleInput(0, 1);
-		}
-		if((joypad0[24]==1 && joypre0[24]==0) || (joypad1[24]==1 && joypre1[24]==0)) // right analog left
+		if(((joypad0[2]==1 && joypre0[2]==0) || (joypad1[2]==1 && joypre1[2]==0))  || // left
+		 ((joypad0[20]==1 && joypre0[20]==0) || (joypad1[20]==1 && joypre1[20]==0))|| // left analog left
+		 ((joypad0[24]==1 && joypre0[24]==0) || (joypad1[24]==1 && joypre1[24]==0)))  // right analog left
 		{
 			CONTROLLER_consoleInput(0, 1);
 		}
 
-		if((joypad0[3]==1 && joypre0[3]==0) || (joypad1[3]==1 && joypre1[3]==0)) // right
-		{
-			CONTROLLER_consoleInput(1, 1);
-		}
-		if((joypad0[22]==1 && joypre0[22]==0) || (joypad1[22]==1 && joypre1[22]==0)) // left analog right
-		{
-			CONTROLLER_consoleInput(1, 1);
-		}
-		if((joypad0[25]==1 && joypre0[25]==0) || (joypad1[25]==1 && joypre1[25]==0)) // right analog right
+		if(((joypad0[3]==1 && joypre0[3]==0) || (joypad1[3]==1 && joypre1[3]==0)) || // right
+		((joypad0[22]==1 && joypre0[22]==0) || (joypad1[22]==1 && joypre1[22]==0))|| // left analog right
+		((joypad0[25]==1 && joypre0[25]==0) || (joypad1[25]==1 && joypre1[25]==0)))  // right analog right
 		{
 			CONTROLLER_consoleInput(1, 1);
 		}
@@ -391,7 +396,14 @@ void retro_run(void)
 	}
 
 	// grab frame
-	CHANNELF_run();
+	if(is_hle())
+	{
+		CHANNELF_HLE_run();
+	}
+	else
+	{
+		CHANNELF_run();
+	}
 
 	AudioBatch (AUDIO_Buffer, audioSamples);
 	AUDIO_frame(); // notify audio to start new audio frame
@@ -479,10 +491,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 }
 
 
-void retro_deinit(void)
-{
-	
-}
+void retro_deinit(void) {  }
 
 void retro_reset(void)
 {
@@ -491,7 +500,7 @@ void retro_reset(void)
 
 struct serialized_state
 {
-	unsigned int cpu_ticks_debt;
+	unsigned int CPU_Ticks_Debt;
 	unsigned char Memory[MEMORY_SIZE];
 	unsigned char R[R_SIZE]; // 64 byte Scratchpad
 	unsigned char VIDEO_Buffer[8192];
@@ -521,38 +530,44 @@ struct serialized_state
 	struct hle_state_s hle_state;
 };
 
-size_t retro_serialize_size(void) {
+size_t retro_serialize_size(void)
+{
 	return sizeof (struct serialized_state);
 }
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-static inline unsigned short be16(unsigned short v) {
+static inline unsigned short be16(unsigned short v)
+{
 	return ((v & 0xff) << 8) | ((v & 0xff00) >> 8);
 }
-static inline unsigned int be32(unsigned int v) {
+static inline unsigned int be32(unsigned int v)
+{
 	return ((v & 0xff) << 24) | ((v & 0xff00) << 8) | ((v & 0xff0000) >> 8) | ((v & 0xff000000) >> 16);
 }
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-static inline unsigned short be16(unsigned short v) {
+static inline unsigned short be16(unsigned short v)
+{
 	return v;
 }
-static inline unsigned int be32(unsigned int v) {
+static inline unsigned int be32(unsigned int v)
+{
 	return v;
 }
 #else
 #error What should I do?
 #endif
 
-bool retro_serialize(void *data, size_t size) {
+bool retro_serialize(void *data, size_t size)
+{
 	if (size < sizeof (struct serialized_state))
 		return false;
 
 	struct serialized_state *st = data;
-	memcpy (st->Memory, Memory, MEMORY_SIZE);
-	memcpy (st->R, R, R_SIZE);
-	memcpy (st->VIDEO_Buffer, VIDEO_Buffer_raw, sizeof(VIDEO_Buffer_raw));
-	memcpy (st->Ports, Ports, sizeof(Ports));
-	memcpy (st->f2102_memory, f2102_memory, sizeof(f2102_memory));
+	memcpy(st->Memory, Memory, MEMORY_SIZE);
+	memcpy(st->R, R, R_SIZE);
+	memcpy(st->VIDEO_Buffer, VIDEO_Buffer_raw, sizeof(VIDEO_Buffer_raw));
+	memcpy(st->Ports, Ports, sizeof(Ports));
+	memcpy(st->f2102_memory, f2102_memory, sizeof(f2102_memory));
 
 	st->A = A;
 	st->ISAR = ISAR;
@@ -579,12 +594,13 @@ bool retro_serialize(void *data, size_t size) {
 	st->tone = tone;
 	st->amp = be16(amp);
 	st->hle_state = hle_state;
-	st->cpu_ticks_debt = be32(cpu_ticks_debt);
+	st->CPU_Ticks_Debt = be32(CPU_Ticks_Debt);
 
 	return true;
 }
 
-bool retro_unserialize(const void *data, size_t size) {
+bool retro_unserialize(const void *data, size_t size)
+{
 	if (size < sizeof (struct serialized_state))
 		return false;
 
@@ -621,25 +637,40 @@ bool retro_unserialize(const void *data, size_t size) {
 
 	tone = st->tone;
 	amp = be16(st->amp);
-	cpu_ticks_debt = be32(st->cpu_ticks_debt);
+	CPU_Ticks_Debt = be32(st->CPU_Ticks_Debt);
 
 	return true;
 }
 
-void *retro_get_memory_data(unsigned id) {
-	if (id == RETRO_MEMORY_SYSTEM_RAM)
-		return Memory;
-	if (id == RETRO_MEMORY_VIDEO_RAM)
-		return VIDEO_Buffer_raw;
+size_t retro_get_memory_size(unsigned id)
+{
+	switch(id)
+	{
+		case RETRO_MEMORY_SYSTEM_RAM: // System Memory
+			return 0x10000; //65536
+	
+		case RETRO_MEMORY_VIDEO_RAM: // Video Memory
+			return 0x2000; //8192
 
-	return NULL;
+		//case RETRO_MEMORY_SAVE_RAM: // SRAM / Regular save RAM
+		//case RETRO_MEMORY_RTC: // Real-time clock value  
+	}
+	return 0;
 }
 
-size_t retro_get_memory_size(unsigned id) {
-	if (id == RETRO_MEMORY_SYSTEM_RAM)
-		return MEMORY_SIZE;
-	if (id == RETRO_MEMORY_VIDEO_RAM)
-		return sizeof(VIDEO_Buffer_raw);
+void *retro_get_memory_data(unsigned id)
+{
+	switch(id)
+	{
+		case RETRO_MEMORY_SYSTEM_RAM: // System Memory
+			return Memory;
+	
+		case RETRO_MEMORY_VIDEO_RAM: // Video Memory
+			return VIDEO_Buffer_raw;
+
+		//case RETRO_MEMORY_SAVE_RAM: // SRAM / Regular save RAM
+		//case RETRO_MEMORY_RTC: // Real-time clock value  
+	}
 	return 0;
 }
 
