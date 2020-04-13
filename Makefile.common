@@ -10,7 +10,8 @@ SOURCES_C := \
 	$(SOURCE_DIR)/audio.c \
 	$(SOURCE_DIR)/video.c \
 	$(SOURCE_DIR)/ports.c \
-	$(SOURCE_DIR)/osd.c
+	$(SOURCE_DIR)/osd.c \
+	$(SOURCE_DIR)/channelf_hle.c
 
 ifeq ($(STATIC_LINKING),1)
 else
