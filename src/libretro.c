@@ -60,20 +60,9 @@ retro_input_poll_t InputPoll;
 retro_input_state_t InputState;
 struct retro_vfs_interface *vfs_interface;
 
-static void fallback_log(enum retro_log_level level, const char *fmt, ...)
-{
-	va_list va;
-	(void)level;
-	va_start(va, fmt);
-	vfprintf(stderr, fmt, va);
-	va_end(va);
-}
-
 void retro_set_environment(retro_environment_t fn)
 {
 	Environ = fn;
-
-	struct retro_log_callback logging;
 
 	struct retro_vfs_interface_info vfs_interface_info;
 	vfs_interface_info.required_interface_version = 1;
@@ -81,12 +70,6 @@ void retro_set_environment(retro_environment_t fn)
 	if (fn(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info))
 	{
 		vfs_interface = vfs_interface_info.iface;
-	}
-
-	channelf_log = fallback_log;
-	if (fn(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &logging))
-	{
-		channelf_log = logging.log;
 	}
 
 	static struct retro_variable variables[] =
@@ -189,14 +172,14 @@ void retro_init(void)
 	fill_pathname_join(PSU_1_Update_Path, SystemPath, "sl90025.bin", PATH_MAX_LENGTH);
 	if(!CHANNELF_loadROM_libretro(PSU_1_Update_Path, 0))
 	{
-		channelf_log(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F II BIOS(1) from: %s\n", PSU_1_Update_Path);
+		fprintf(stderr, "[ERROR] [FREECHAF] Failed loading Channel F II BIOS(1) from: %s\n", PSU_1_Update_Path);
 		
 		// load PSU 1 Original
 		fill_pathname_join(PSU_1_Path, SystemPath, "sl31253.bin", PATH_MAX_LENGTH);
 		if(!CHANNELF_loadROM_libretro(PSU_1_Path, 0))
 		{
-			channelf_log(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(1) from: %s\n", PSU_1_Path);
-			channelf_log(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Switching to HLE for PSU1\n");
+			fprintf(stderr, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(1) from: %s\n", PSU_1_Path);
+			fprintf(stderr, "[ERROR] [FREECHAF] Switching to HLE for PSU1\n");
 			hle_state.psu1_hle = true;
 		}
 	}
@@ -205,8 +188,8 @@ void retro_init(void)
 	fill_pathname_join(PSU_2_Path, SystemPath, "sl31254.bin", PATH_MAX_LENGTH);
 	if(!CHANNELF_loadROM_libretro(PSU_2_Path, 0x400))
 	{
-		channelf_log(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
-		channelf_log(RETRO_LOG_ERROR, "[ERROR] [FREECHAF] Switching to HLE for PSU2\n");
+		fprintf(stderr, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
+		fprintf(stderr, "[ERROR] [FREECHAF] Switching to HLE for PSU2\n");
 		hle_state.psu2_hle = true;
 	}
 

@@ -32,7 +32,7 @@
 
 void unsupported_hle_function(void)
 {
-	channelf_log(RETRO_LOG_ERROR, "Unsupported HLE function: 0x%x\n", PC0);
+	fprintf(stderr, "Unsupported HLE function: 0x%x\n", PC0);
 /*
 	char formatted[1024];
 	struct retro_message msg;

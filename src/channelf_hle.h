@@ -20,8 +20,6 @@
 
 void CHANNELF_HLE_run(void);
 
-//static int is_hle(void);
-
 void unsupported_hle_function(void);
 
 struct hle_state_s

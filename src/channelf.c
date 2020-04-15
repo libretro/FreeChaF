@@ -26,8 +26,6 @@
 #include "ports.h"
 #include "video.h"
 
-retro_log_printf_t channelf_log;
-
 int CPU_Ticks_Debt = 0;
 
 int CHANNELF_loadROM(const char* path, int address)
