@@ -22,6 +22,7 @@
 #include "libretro.h"
 #include <file/file_path.h>
 #include <retro_miscellaneous.h>
+#include <retro_endianness.h>
 
 #include "memory.h"
 #include "channelf.h"
@@ -518,28 +519,6 @@ size_t retro_serialize_size(void)
 	return sizeof (struct serialized_state);
 }
 
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-static inline unsigned short be16(unsigned short v)
-{
-	return ((v & 0xff) << 8) | ((v & 0xff00) >> 8);
-}
-static inline unsigned int be32(unsigned int v)
-{
-	return ((v & 0xff) << 24) | ((v & 0xff00) << 8) | ((v & 0xff0000) >> 8) | ((v & 0xff000000) >> 16);
-}
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-static inline unsigned short be16(unsigned short v)
-{
-	return v;
-}
-static inline unsigned int be32(unsigned int v)
-{
-	return v;
-}
-#else
-#error What should I do?
-#endif
-
 bool retro_serialize(void *data, size_t size)
 {
 	if (size < sizeof (struct serialized_state))
@@ -556,10 +535,10 @@ bool retro_serialize(void *data, size_t size)
 	st->ISAR = ISAR;
 	st->W = W;
 
-	st->PC0 = be16(PC0);
-	st->PC1 = be16(PC1);
-	st->DC0 = be16(DC0);
-	st->DC1 = be16(DC1);
+	st->PC0 = retro_cpu_to_be16(PC0);
+	st->PC1 = retro_cpu_to_be16(PC1);
+	st->DC0 = retro_cpu_to_be16(DC0);
+	st->DC1 = retro_cpu_to_be16(DC1);
 
 	st->X = X;
 	st->Y = Y;
@@ -567,17 +546,17 @@ bool retro_serialize(void *data, size_t size)
 	st->ARM = ARM;
 
 	st->f2102_rw = f2102_rw;
-	st->f2102_address = be16(f2102_address);
-	st->f2102_state = be16(f2102_state);
+	st->f2102_address = retro_cpu_to_be16(f2102_address);
+	st->f2102_state = retro_cpu_to_be16(f2102_state);
 
 	st->ControllerEnabled = ControllerEnabled;
 	st->ControllerSwapped = ControllerSwapped;
 	st->console_input = console_input;
 
 	st->tone = tone;
-	st->amp = be16(amp);
+	st->amp = retro_cpu_to_be16(amp);
 	st->hle_state = hle_state;
-	st->CPU_Ticks_Debt = be32(CPU_Ticks_Debt);
+	st->CPU_Ticks_Debt = retro_cpu_to_be32(CPU_Ticks_Debt);
 
 	return true;
 }
@@ -598,10 +577,10 @@ bool retro_unserialize(const void *data, size_t size)
 	ISAR = st->ISAR;
 	W = st->W;
 
-	PC0 = be16(st->PC0);
-	PC1 = be16(st->PC1);
-	DC0 = be16(st->DC0);
-	DC1 = be16(st->DC1);
+	PC0 = retro_be_to_cpu16(st->PC0);
+	PC1 = retro_be_to_cpu16(st->PC1);
+	DC0 = retro_be_to_cpu16(st->DC0);
+	DC1 = retro_be_to_cpu16(st->DC1);
 
 	X = st->X;
 	Y = st->Y;
@@ -609,8 +588,8 @@ bool retro_unserialize(const void *data, size_t size)
 	ARM = st->ARM;
 
 	f2102_rw = st->f2102_rw;
-	f2102_address = be16(st->f2102_address);
-	f2102_state = be16(st->f2102_state);
+	f2102_address = retro_be_to_cpu16(st->f2102_address);
+	f2102_state = retro_be_to_cpu16(st->f2102_state);
 
 	ControllerEnabled = st->ControllerEnabled;
 	ControllerSwapped = st->ControllerSwapped;
@@ -619,8 +598,8 @@ bool retro_unserialize(const void *data, size_t size)
 	hle_state = st->hle_state;
 
 	tone = st->tone;
-	amp = be16(st->amp);
-	CPU_Ticks_Debt = be32(st->CPU_Ticks_Debt);
+	amp = retro_be_to_cpu16(st->amp);
+	CPU_Ticks_Debt = retro_be_to_cpu32(st->CPU_Ticks_Debt);
 
 	return true;
 }
