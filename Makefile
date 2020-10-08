@@ -448,7 +448,7 @@ else ifeq ($(platform), xbox360_msvc2010)
 # Current Windows builds via mingw/gcc
 else
 	TARGET := $(TARGET_NAME)_libretro.dll
-	CC = gcc
+	CC ?= gcc
 	SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=$(CORE_DIR)/link.T -Wl,--no-undefined
 	CFLAGS += -D__WIN32__ -D__WIN32_LIBRETRO__ -Wno-missing-field-initializers
 endif
