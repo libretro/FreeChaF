@@ -31,7 +31,11 @@ void VIDEO_drawFrame(void);
 
 #ifdef USE_RGB565
 typedef unsigned short pixel_t;
+#if defined(ABGR1555)
+#define vRGB(r,g,b) ((((b) & 0xf8) << 7) | (((g) & 0xf8) << 2) | (((r) & 0xf8) >> 3))
+#else
 #define vRGB(r,g,b) ((((r) & 0xf8) << 8) | (((g) & 0xfc) << 3) | (((b) & 0xf8) >> 3))
+#endif
 #else
 typedef unsigned int pixel_t;
 #define vRGB(r,g,b) (((r) << 16) | ((g) << 8) | (b))
