@@ -236,8 +236,8 @@ else ifeq ($(platform), emscripten)
 # PS2
 else ifeq ($(platform), ps2)
 	TARGET := $(TARGET_NAME)_libretro_$(platform).a
-	CC = ee-gcc
-	AR = ee-ar
+	CC = mips64r5900el-ps2-elf-gcc
+	AR = mips64r5900el-ps2-elf-ar
 	CFLAGS += -G0 -DPS2 -DUSE_RGB565 -DABGR1555
 	CXXFLAGS += -G0 -DPS2 -DUSE_RGB565 -DABGR1555
 	STATIC_LINKING=1
