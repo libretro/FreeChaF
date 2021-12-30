@@ -119,6 +119,36 @@ static int CHANNELF_HLE(void)
 		
 		return TICKS_PER_ROW;
 	}
+	case 0x107: // pushk
+	{
+		int tisar = R[0x3b];
+		R[tisar & 0x3f] = R[12];
+		R[(tisar + 1) & 0x3f] = R[13];
+		R[0x3b] = (tisar + 2) & 0x3f;
+
+		// Simulate clobbering
+		A = ISAR;
+		R[7] = ISAR;
+
+		// Return
+		PC0 = PC1;
+		return 48;
+	}
+	case 0x11e: // popk
+	{
+		int tisar = R[0x3b];
+		R[13] = R[(tisar - 1) & 0x3f];
+		R[12] = R[(tisar - 2) & 0x3f];
+		R[0x3b] = (tisar - 2) & 0x3f;
+
+		// Simulate clobbering
+		A = ISAR;
+		R[7] = ISAR;
+
+		// Return
+		PC0 = PC1;
+		return 50;
+	}
 	default:
 		unsupported_hle_function();
 		return TICKS_PER_FRAME;
