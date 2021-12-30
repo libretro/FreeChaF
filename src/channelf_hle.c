@@ -91,6 +91,7 @@ static int CHANNELF_HLE(void)
 		// guesswork
 		switch (R[3])
 		{
+		case 0xd0:
 		case 0xc6:
 			hle_state.screen_clear_pal = 3;
 			hle_state.screen_clear_color = 0;
@@ -168,7 +169,7 @@ static int is_hle(void)
 		return 1;
 	}
 
-	if (PC0 == 0xd0 && hle_state.fast_screen_clear && (R[3] == 0xc6 || R[3] == 0x21))
+	if (PC0 == 0xd0 && hle_state.fast_screen_clear && (R[3] == 0xc6 || R[3] == 0x21 || R[3] == 0xd0))
 	{
 		return 1;
 	}
