@@ -220,27 +220,6 @@ void retro_init(void)
 	}
 }
 
-static int is_hle(void)
-{
-	if (hle_state.screen_clear_row)
-		return 1;
-
-	if (PC0 < 0x400 && hle_state.psu1_hle)
-		return 1;
-
-	if (PC0 >= 0x400 && PC0 < 0x800 && hle_state.psu2_hle)
-	{
-		return 1;
-	}
-
-	if (PC0 == 0xd0 && hle_state.fast_screen_clear && (R[3] == 0xc6 || R[3] == 0x21))
-	{
-		return 1;
-	}
-
-	return 0;
-}
-
 bool retro_load_game(const struct retro_game_info *info)
 {
 	update_variables();
@@ -397,7 +376,7 @@ void retro_run(void)
 	}
 
 	// grab frame
-	if(is_hle())
+	if(hle_state.psu1_hle || hle_state.psu2_hle || hle_state.fast_screen_clear)
 	{
 		CHANNELF_HLE_run();
 	}

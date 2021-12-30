@@ -125,6 +125,27 @@ static int CHANNELF_HLE(void)
 	}
 }
 
+static int is_hle(void)
+{
+	if (hle_state.screen_clear_row)
+		return 1;
+
+	if (PC0 < 0x400 && hle_state.psu1_hle)
+		return 1;
+
+	if (PC0 >= 0x400 && PC0 < 0x800 && hle_state.psu2_hle)
+	{
+		return 1;
+	}
+
+	if (PC0 == 0xd0 && hle_state.fast_screen_clear && (R[3] == 0xc6 || R[3] == 0x21))
+	{
+		return 1;
+	}
+
+	return 0;
+}
+
 void CHANNELF_HLE_run(void) // run for one frame
 {
 	int tick  = 0;
@@ -132,7 +153,10 @@ void CHANNELF_HLE_run(void) // run for one frame
 
 	while(ticks<TICKS_PER_FRAME)
 	{
-		tick = CHANNELF_HLE();
+		if (is_hle())
+			tick = CHANNELF_HLE();
+		else
+			tick = F8_exec();
 		ticks+=tick;
 		AUDIO_tick(tick);
 	}
