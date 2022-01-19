@@ -54,6 +54,7 @@ char *SystemPath;
 struct hle_state_s hle_state;
 
 retro_environment_t Environ;
+retro_log_printf_t log_cb;
 retro_video_refresh_t Video;
 retro_audio_sample_t Audio;
 retro_audio_sample_batch_t AudioBatch;
@@ -152,6 +153,15 @@ bool console_input = false;
 // at 44.1khz, read 735 samples (44100/60) 
 static const int audioSamples = 735;
 
+static void fallback_log(enum retro_log_level level,
+			 const char *fmt, ...) {
+	va_list args;
+
+	va_start(args, fmt);
+	vfprintf(stderr, fmt, args);
+	va_end(args);
+}
+
 void retro_init(void)
 {
 	char PSU_1_Update_Path[PATH_MAX_LENGTH];
@@ -166,6 +176,13 @@ void retro_init(void)
 	// init console
 	CHANNELF_init();
 
+	struct retro_log_callback log;
+
+	if (Environ(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log))
+		log_cb = log.log;
+	else
+		log_cb = fallback_log;
+
 	// get paths
 	Environ(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &SystemPath);
 
@@ -173,14 +190,14 @@ void retro_init(void)
 	fill_pathname_join(PSU_1_Update_Path, SystemPath, "sl90025.bin", PATH_MAX_LENGTH);
 	if(!CHANNELF_loadROM_libretro(PSU_1_Update_Path, 0))
 	{
-		fprintf(stderr, "[ERROR] [FREECHAF] Failed loading Channel F II BIOS(1) from: %s\n", PSU_1_Update_Path);
+		log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Failed loading Channel F II BIOS(1) from: %s\n", PSU_1_Update_Path);
 		
 		// load PSU 1 Original
 		fill_pathname_join(PSU_1_Path, SystemPath, "sl31253.bin", PATH_MAX_LENGTH);
 		if(!CHANNELF_loadROM_libretro(PSU_1_Path, 0))
 		{
-			fprintf(stderr, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(1) from: %s\n", PSU_1_Path);
-			fprintf(stderr, "[ERROR] [FREECHAF] Switching to HLE for PSU1\n");
+			log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Failed loading Channel F BIOS(1) from: %s\n", PSU_1_Path);
+			log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Switching to HLE for PSU1\n");
 			hle_state.psu1_hle = true;
 		}
 	}
@@ -189,8 +206,8 @@ void retro_init(void)
 	fill_pathname_join(PSU_2_Path, SystemPath, "sl31254.bin", PATH_MAX_LENGTH);
 	if(!CHANNELF_loadROM_libretro(PSU_2_Path, 0x400))
 	{
-		fprintf(stderr, "[ERROR] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
-		fprintf(stderr, "[ERROR] [FREECHAF] Switching to HLE for PSU2\n");
+		log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
+		log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Switching to HLE for PSU2\n");
 		hle_state.psu2_hle = true;
 	}
 
@@ -201,27 +218,6 @@ void retro_init(void)
 			msg.frames = 600;
 			Environ(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
 	}
-}
-
-static int is_hle(void)
-{
-	if (hle_state.screen_clear_row)
-		return 1;
-
-	if (PC0 < 0x400 && hle_state.psu1_hle)
-		return 1;
-
-	if (PC0 >= 0x400 && PC0 < 0x800 && hle_state.psu2_hle)
-	{
-		return 1;
-	}
-
-	if (PC0 == 0xd0 && hle_state.fast_screen_clear && (R[3] == 0xc6 || R[3] == 0x21))
-	{
-		return 1;
-	}
-
-	return 0;
 }
 
 bool retro_load_game(const struct retro_game_info *info)
@@ -380,7 +376,7 @@ void retro_run(void)
 	}
 
 	// grab frame
-	if(is_hle())
+	if(hle_state.psu1_hle || hle_state.psu2_hle || hle_state.fast_screen_clear)
 	{
 		CHANNELF_HLE_run();
 	}

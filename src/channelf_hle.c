@@ -32,15 +32,14 @@
 
 void unsupported_hle_function(void)
 {
-	fprintf(stderr, "Unsupported HLE function: 0x%x\n", PC0);
-/*
 	char formatted[1024];
+	snprintf(formatted, 1000, "Unsupported HLE function: 0x%x\n", PC0);
+	log_cb(RETRO_LOG_ERROR, formatted);
 	struct retro_message msg;
 	msg.msg    = formatted;
 	msg.frames = 600;
 	Environ(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
 	Environ(RETRO_ENVIRONMENT_SHUTDOWN, NULL);
-*/
 }
 
 static void hle_clear_row(int row)
@@ -92,6 +91,7 @@ static int CHANNELF_HLE(void)
 		// guesswork
 		switch (R[3])
 		{
+		case 0xd0:
 		case 0xc6:
 			hle_state.screen_clear_pal = 3;
 			hle_state.screen_clear_color = 0;
@@ -120,10 +120,61 @@ static int CHANNELF_HLE(void)
 		
 		return TICKS_PER_ROW;
 	}
+	case 0x107: // pushk
+	{
+		int tisar = R[0x3b];
+		R[tisar & 0x3f] = R[12];
+		R[(tisar + 1) & 0x3f] = R[13];
+		R[0x3b] = (tisar + 2) & 0x3f;
+
+		// Simulate clobbering
+		A = ISAR;
+		R[7] = ISAR;
+
+		// Return
+		PC0 = PC1;
+		return 48;
+	}
+	case 0x11e: // popk
+	{
+		int tisar = R[0x3b];
+		R[13] = R[(tisar - 1) & 0x3f];
+		R[12] = R[(tisar - 2) & 0x3f];
+		R[0x3b] = (tisar - 2) & 0x3f;
+
+		// Simulate clobbering
+		A = ISAR;
+		R[7] = ISAR;
+
+		// Return
+		PC0 = PC1;
+		return 50;
+	}
 	default:
 		unsupported_hle_function();
 		return TICKS_PER_FRAME;
 	}
+}
+
+static int is_hle(void)
+{
+	if (hle_state.screen_clear_row)
+		return 1;
+
+	if (PC0 < 0x400 && hle_state.psu1_hle)
+		return 1;
+
+	if (PC0 >= 0x400 && PC0 < 0x800 && hle_state.psu2_hle)
+	{
+		return 1;
+	}
+
+	if (PC0 == 0xd0 && hle_state.fast_screen_clear && (R[3] == 0xc6 || R[3] == 0x21 || R[3] == 0xd0))
+	{
+		return 1;
+	}
+
+	return 0;
 }
 
 void CHANNELF_HLE_run(void) // run for one frame
@@ -133,7 +184,10 @@ void CHANNELF_HLE_run(void) // run for one frame
 
 	while(ticks<TICKS_PER_FRAME)
 	{
-		tick = CHANNELF_HLE();
+		if (is_hle())
+			tick = CHANNELF_HLE();
+		else
+			tick = F8_exec();
 		ticks+=tick;
 		AUDIO_tick(tick);
 	}

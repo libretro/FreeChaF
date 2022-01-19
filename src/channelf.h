@@ -15,6 +15,11 @@
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
 
+#include "libretro.h"
+
+extern retro_environment_t Environ;
+extern retro_log_printf_t log_cb;
+
 extern int CPU_Ticks_Debt;
 
 int CHANNELF_loadROM(const char* path, int address);
