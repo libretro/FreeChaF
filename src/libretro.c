@@ -143,10 +143,10 @@ void retro_set_input_state(retro_input_state_t fn) { InputState = fn; }
 
 struct retro_game_geometry Geometry;
 
-int joypad0[26]; // joypad 0 state
-int joypad1[26]; // joypad 1 state
-int joypre0[26]; // joypad 0 previous state
-int joypre1[26]; // joypad 1 previous state
+int joypad0[10]; // joypad 0 state
+int joypad1[10]; // joypad 1 state
+int joypre0[10]; // joypad 0 previous state
+int joypre1[10]; // joypad 1 previous state
 
 bool console_input = false;
 
@@ -223,7 +223,38 @@ void retro_init(void)
 bool retro_load_game(const struct retro_game_info *info)
 {
 	update_variables();
-	return CHANNELF_loadROM_mem(info->data, info->size, 0x800);
+	if (!CHANNELF_loadROM_mem(info->data, info->size, 0x800))
+		return false;
+
+	struct retro_input_descriptor desc[] = {
+		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,  "left" },
+		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP,    "forward" },
+		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN,  "back" },
+		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT, "right" },
+		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B,     "push" },
+		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A,     "rotate right" },
+		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X,     "pull" },
+		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y,     "rotate left" },
+		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT,"swap left/right controllers" },
+		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START, "swap console/controller input" },
+
+		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,  "left" },
+		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP,    "forward" },
+		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN,  "back" },
+		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT, "right" },
+		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B,     "push" },
+		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A,     "rotate right" },
+		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X,     "pull" },
+		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y,     "rotate left" },
+		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT,"swap left/right controllers" },
+		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START, "swap console/controller input" },
+
+		{ 0 },
+	};
+
+	Environ(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);
+
+	return true;
 }
 
 void retro_unload_game(void)
@@ -243,7 +274,7 @@ void retro_run(void)
 
 	InputPoll();
 
-	for(i=0; i<18; i++) // Copy previous state 
+	for(i=0; i<sizeof(joypre0)/sizeof(joypre0[0]); i++) // Copy previous state 
 	{
 		joypre0[i] = joypad0[i];
 		joypre1[i] = joypad1[i];
@@ -264,16 +295,6 @@ void retro_run(void)
 	joypad0[8] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
 	joypad0[9] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
 
-	joypad0[10] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-	joypad0[11] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-	joypad0[12] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
-	joypad0[13] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
-
-	joypad0[14] = InputState(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
-	joypad0[15] = InputState(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
-	joypad0[16] = InputState(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
-	joypad0[17] = InputState(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
-
 	/* JoyPad 1 */
 
 	joypad1[0] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
@@ -289,28 +310,6 @@ void retro_run(void)
 	joypad1[8] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
 	joypad1[9] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
 
-	joypad1[10] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-	joypad1[11] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-	joypad1[12] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
-	joypad1[13] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
-
-	joypad1[14] = InputState(1, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
-	joypad1[15] = InputState(1, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
-	joypad1[16] = InputState(1, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
-	joypad1[17] = InputState(1, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
-
-	// analog up, down, left, right
-	// left analog:  18,19,20,21
-	// right analog: 22,23,24,25
-	joypad1[18] = (joypad1[15]/4096) <-1; // ALeft UP
-	joypad1[19] = (joypad1[15]/4096) > 1; // ALeft DOWN
-	joypad1[20] = (joypad1[14]/4096) <-1; // ALeft LEFT
-	joypad1[21] = (joypad1[14]/4096) > 1; // ALeft RIGHT
-	joypad1[22] = (joypad1[17]/4096) <-1; // ARight UP
-	joypad1[23] = (joypad1[17]/4096) > 1; // ARight DOWN
-	joypad1[24] = (joypad1[16]/4096) <-1; // ARight LEFT
-	joypad1[25] = (joypad1[16]/4096) > 1; // ARight RIGHT
-
 	// swap console/controller input //
 	if((joypad0[8]==1 && joypre0[8]==0) || (joypad1[8]==1 && joypre1[8]==0))
 	{
@@ -325,16 +324,12 @@ void retro_run(void)
 
 	if(console_input) // console input
 	{
-		if(((joypad0[2]==1 && joypre0[2]==0) || (joypad1[2]==1 && joypre1[2]==0))  || // left
-		 ((joypad0[20]==1 && joypre0[20]==0) || (joypad1[20]==1 && joypre1[20]==0))|| // left analog left
-		 ((joypad0[24]==1 && joypre0[24]==0) || (joypad1[24]==1 && joypre1[24]==0)))  // right analog left
+		if(((joypad0[2]==1 && joypre0[2]==0) || (joypad1[2]==1 && joypre1[2]==0)))  // left
 		{
 			CONTROLLER_consoleInput(0, 1);
 		}
 
-		if(((joypad0[3]==1 && joypre0[3]==0) || (joypad1[3]==1 && joypre1[3]==0)) || // right
-		((joypad0[22]==1 && joypre0[22]==0) || (joypad1[22]==1 && joypre1[22]==0))|| // left analog right
-		((joypad0[25]==1 && joypre0[25]==0) || (joypad1[25]==1 && joypre1[25]==0)))  // right analog right
+		if(((joypad0[3]==1 && joypre0[3]==0) || (joypad1[3]==1 && joypre1[3]==0))) // right
 		{
 			CONTROLLER_consoleInput(1, 1);
 		}
@@ -355,24 +350,24 @@ void retro_run(void)
 	{
 		// ordinary controller input
 		CONTROLLER_setInput(1,
-		((joypad0[5] | joypad0[23])<<7)|               /* push         - B    - ALeft Down  -         */
-		((joypad0[6] | joypad0[22])<<6)|               /* pull         - X    - ALeft Up    -         */
-		((joypad0[4] | joypad0[25] | joypad0[11])<<5)| /* rotate right - A    - ALeft Right - ShRight */
-		((joypad0[7] | joypad0[24] | joypad0[10])<<4)| /* rotate left  - Y    - ALeft rLeft - ShLeft  */
-		((joypad0[0] | joypad0[18])<<3)|               /* forward      - Up   - ARight Up   -         */
-		((joypad0[1] | joypad0[19])<<2)|               /* back         - Down - ARight Down -         */
-		((joypad0[2] | joypad0[20])<<1)|               /* left         - Left - ARight Left -         */
-		((joypad0[3] | joypad0[21])) );                /* right        - Right- ARight Right-         */
+		(joypad0[5]<<7)|               /* push         - B    - ALeft Down  -         */
+		(joypad0[6]<<6)|               /* pull         - X    - ALeft Up    -         */
+		(joypad0[4]<<5)|               /* rotate right - A    - ALeft Right - ShRight */
+		(joypad0[7]<<4)|               /* rotate left  - Y    - ALeft rLeft - ShLeft  */
+		(joypad0[0]<<3)|               /* forward      - Up   - ARight Up   -         */
+		(joypad0[1]<<2)|               /* back         - Down - ARight Down -         */
+		(joypad0[2]<<1)|               /* left         - Left - ARight Left -         */
+		(joypad0[3]) );                /* right        - Right- ARight Right-         */
 
 		CONTROLLER_setInput(2,
-		((joypad1[5] | joypad1[23])<<7)|               /* push         - B    - ALeft Down  -         */
-		((joypad1[6] | joypad1[22])<<6)|               /* pull         - X    - ALeft Up    -         */
-		((joypad1[4] | joypad1[25] | joypad1[11])<<5)| /* rotate right - A    - ALeft Right - ShRight */
-		((joypad1[7] | joypad1[24] | joypad1[10])<<4)| /* rotate left  - Y    - ALeft rLeft - ShLeft  */
-		((joypad1[0] | joypad1[18])<<3)|               /* forward      - Up   - ARight Up   -         */
-		((joypad1[1] | joypad1[19])<<2)|               /* back         - Down - ARight Down -         */
-		((joypad1[2] | joypad1[20])<<1)|               /* left         - Left - ARight Left -         */
-		((joypad1[3] | joypad1[21])) );                /* right        - Right- ARight Right-         */
+		(joypad1[5]<<7)|               /* push         - B    - ALeft Down  -         */
+		(joypad1[6]<<6)|               /* pull         - X    - ALeft Up    -         */
+		(joypad1[4]<<5)|               /* rotate right - A    - ALeft Right - ShRight */
+		(joypad1[7]<<4)|               /* rotate left  - Y    - ALeft rLeft - ShLeft  */
+		(joypad1[0]<<3)|               /* forward      - Up   - ARight Up   -         */
+		(joypad1[1]<<2)|               /* back         - Down - ARight Down -         */
+		(joypad1[2]<<1)|               /* left         - Left - ARight Left -         */
+		(joypad1[3]) );                /* right        - Right- ARight Right-         */
 	}
 
 	// grab frame
