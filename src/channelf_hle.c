@@ -33,9 +33,9 @@
 void unsupported_hle_function(void)
 {
 	char formatted[1024];
+	struct retro_message msg;
 	snprintf(formatted, 1000, "Unsupported HLE function: 0x%x\n", PC0);
 	log_cb(RETRO_LOG_ERROR, formatted);
-	struct retro_message msg;
 	msg.msg    = formatted;
 	msg.frames = 600;
 	Environ(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
