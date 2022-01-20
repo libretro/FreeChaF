@@ -38,7 +38,6 @@
 #define DefaultFPS 60
 #define frameWidth 306
 #define frameHeight 192
-#define frameSize (framePitchPixel * frameHeight)
 
 #ifdef PSP
 // Workaround for a psp1 gfx driver.
@@ -46,6 +45,8 @@
 #else
 #define framePitchPixel frameWidth
 #endif
+
+#define frameSize (framePitchPixel * frameHeight)
 
 pixel_t frame[frameSize];
 
