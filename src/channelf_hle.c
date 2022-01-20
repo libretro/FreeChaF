@@ -30,11 +30,19 @@
 
 #define TICKS_PER_ROW 18606
 
+// Old MSVC has no snprintf
+#if defined(_MSC_VER) && _MSC_VER < 1900
+#define any_snprintf _snprintf
+#else
+#define any_snprintf snprintf
+#endif
+
 void unsupported_hle_function(void)
 {
 	char formatted[1024];
 	struct retro_message msg;
-	snprintf(formatted, 1000, "Unsupported HLE function: 0x%x\n", PC0);
+	memset(formatted, 0, sizeof(formatted));
+	any_snprintf(formatted, 1000, "Unsupported HLE function: 0x%x\n", PC0);
 	log_cb(RETRO_LOG_ERROR, formatted);
 	msg.msg    = formatted;
 	msg.frames = 600;
