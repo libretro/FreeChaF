@@ -46,10 +46,11 @@ void OSD_setBackground(pixel_t color)
 // Utility functions
 void OSD_HLine(int x, int y, int len)
 {
-	if(x<0 || y<0 || (y*DisplayWidth+x+len)>DisplaySize) { return; }
-	
-	int offset = (y*DisplayWidth)+x;
+  	int offset = (y*DisplayWidth)+x;
 	int i;
+
+	if(x<0 || y<0 || (offset+len)>DisplaySize) { return; }
+	
 	for(i=0; i<=len; i++)
 	{
 		Frame[offset] = DisplayColor[1];

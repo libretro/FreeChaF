@@ -70,6 +70,7 @@ void AUDIO_tick(int dt) // dt = ticks elapsed since last call
 		if(sample<samplesPerFrame) // output sample
 		{
 			int toneOutput = 0;
+			int res;
 			// sintable is a 20Hz tone, we need to speed it up to 1000, 500, 120 or 240 Hz
 			switch (tone) {
 			case 1:
@@ -84,7 +85,7 @@ void AUDIO_tick(int dt) // dt = ticks elapsed since last call
 				break;
 			}
 
-			int res = (toneOutput * amp) / 100000;
+			res = (toneOutput * amp) / 100000;
 			AUDIO_Buffer[2 * sample] = res;
 			AUDIO_Buffer[2 * sample + 1] = res;
 		}

@@ -38,7 +38,6 @@
 #define DefaultFPS 60
 #define frameWidth 306
 #define frameHeight 192
-#define frameSize (framePitchPixel * frameHeight)
 
 #ifdef PSP
 // Workaround for a psp1 gfx driver.
@@ -46,6 +45,8 @@
 #else
 #define framePitchPixel frameWidth
 #endif
+
+#define frameSize (framePitchPixel * frameHeight)
 
 pixel_t frame[frameSize];
 
@@ -64,16 +65,7 @@ struct retro_vfs_interface *vfs_interface;
 
 void retro_set_environment(retro_environment_t fn)
 {
-	Environ = fn;
-
-	struct retro_vfs_interface_info vfs_interface_info;
-	vfs_interface_info.required_interface_version = 1;
-	vfs_interface_info.iface = NULL;
-	if (fn(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info))
-	{
-		vfs_interface = vfs_interface_info.iface;
-	}
-
+  	struct retro_vfs_interface_info vfs_interface_info;
 	static struct retro_variable variables[] =
 		{
 			{
@@ -82,6 +74,15 @@ void retro_set_environment(retro_environment_t fn)
 			},
 			{ NULL, NULL },
 		};
+
+	Environ = fn;
+
+	vfs_interface_info.required_interface_version = 1;
+	vfs_interface_info.iface = NULL;
+	if (fn(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info))
+	{
+		vfs_interface = vfs_interface_info.iface;
+	}
 
 	fn(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
 }
@@ -100,12 +101,13 @@ static int CHANNELF_loadROM_libretro(const char* path, int address)
 	if (vfs_interface != NULL) // load rom using Libretro's vfs interface
 	{
 		struct retro_vfs_file_handle *h = vfs_interface->open(path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_NONE);
+		ssize_t size;
 		if (!h) // problem loading file
 		{
 			return 0;
 		}
 
-		ssize_t size = vfs_interface->size(h);
+		size = vfs_interface->size(h);
 		if (size <= 0) // problem loading file
 		{
 			return 0;
@@ -167,6 +169,7 @@ void retro_init(void)
 	char PSU_1_Update_Path[PATH_MAX_LENGTH];
 	char PSU_1_Path[PATH_MAX_LENGTH];
 	char PSU_2_Path[PATH_MAX_LENGTH];
+	struct retro_log_callback log;
 
 	// init buffers, structs
 	memset(frame, 0, frameSize*sizeof(pixel_t));
@@ -175,8 +178,6 @@ void retro_init(void)
 
 	// init console
 	CHANNELF_init();
-
-	struct retro_log_callback log;
 
 	if (Environ(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log))
 		log_cb = log.log;
@@ -222,10 +223,6 @@ void retro_init(void)
 
 bool retro_load_game(const struct retro_game_info *info)
 {
-	update_variables();
-	if (!CHANNELF_loadROM_mem(info->data, info->size, 0x800))
-		return false;
-
 	struct retro_input_descriptor desc[] = {
 		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,  "left" },
 		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP,    "forward" },
@@ -252,6 +249,10 @@ bool retro_load_game(const struct retro_game_info *info)
 		{ 0 },
 	};
 
+	update_variables();
+	if (!CHANNELF_loadROM_mem(info->data, info->size, 0x800))
+		return false;
+
 	Environ(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);
 
 	return true;
@@ -265,6 +266,10 @@ void retro_unload_game(void)
 void retro_run(void)
 {
 	int i = 0;
+	int offset = 0;
+	int color = 0;
+	int row;
+	int col;
 
 	bool updated = false;
 	if (Environ(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
@@ -386,10 +391,8 @@ void retro_run(void)
 	// send frame to libretro
 	VIDEO_drawFrame();
 	// 3x upscale (gives more resolution for OSD)
-	int offset = 0;
-	int color = 0;
-	int row;
-	int col;
+	offset = 0;
+	color = 0;
 	for(row=0; row<64; row++)
 	{
 		offset = (row*3)*framePitchPixel;
@@ -515,10 +518,11 @@ size_t retro_serialize_size(void)
 
 bool retro_serialize(void *data, size_t size)
 {
+  	struct serialized_state *st = data;
+
 	if (size < sizeof (struct serialized_state))
 		return false;
 
-	struct serialized_state *st = data;
 	memcpy(st->Memory, Memory, MEMORY_SIZE);
 	memcpy(st->R, R, R_SIZE);
 	memcpy(st->VIDEO_Buffer, VIDEO_Buffer_raw, sizeof(VIDEO_Buffer_raw));
@@ -557,10 +561,11 @@ bool retro_serialize(void *data, size_t size)
 
 bool retro_unserialize(const void *data, size_t size)
 {
+  	const struct serialized_state *st = data;
+
 	if (size < sizeof (struct serialized_state))
 		return false;
 
-	const struct serialized_state *st = data;
 	memcpy (Memory, st->Memory, MEMORY_SIZE);
 	memcpy (R, st->R, R_SIZE);
 	memcpy (VIDEO_Buffer_raw, st->VIDEO_Buffer, sizeof(VIDEO_Buffer_raw));
