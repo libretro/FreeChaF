@@ -177,11 +177,7 @@ libretro-build-osx-x64:
     - .libretro-osx-x64-make-default
     - .core-defs
 
-<<<<<<< HEAD
 # MacOS PPC
-=======
-# MacOS 64-bit
->>>>>>> e9fe982 (Build for all buildbot targets)
 libretro-build-osx-ppc:
   extends:
     - .libretro-osx-ppc-make-default
