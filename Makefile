@@ -161,9 +161,8 @@ else ifeq ($(platform), miyoo)
 	SHARED := -shared -Wl,-version-script=link.T
 	CC = /opt/miyoo/usr/bin/arm-linux-gcc
 	AR = /opt/miyoo/usr/bin/arm-linux-ar
-	PLATFORM_DEFINES += -D_GNU_SOURCE
 	CFLAGS += -fomit-frame-pointer -ffast-math -march=armv5te -mtune=arm926ej-s
-	CFLAGS += -fno-common -ftree-vectorize -funswitch-loops
+
 # tvOS
 else ifeq ($(platform), tvos-arm64)
 	TARGET := $(TARGET_NAME)_libretro_tvos.dylib
