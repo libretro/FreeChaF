@@ -170,6 +170,40 @@ void retro_init(void)
 	char PSU_1_Path[PATH_MAX_LENGTH];
 	char PSU_2_Path[PATH_MAX_LENGTH];
 	struct retro_log_callback log;
+	static const struct retro_memory_descriptor mem_descs[] = {
+		/*
+		  Unexposed:
+
+		  Internal registers:
+		  * PC0/PC1
+		  * DC0/DC1
+		  * ISAR
+		  * W
+		  * A
+
+		  Emulator state, invisible to the program:
+		  * CPU_Ticks_Debt
+		  * console input: cursorX, cursorDown, console_input
+		  * ControllerSwapped
+
+		  Write-only state:
+		  * sound: tone, amp
+		  * video: ARM, Color, X, Y
+		  * controllers: ControllerEnabled
+
+		  F2102 indirect access:
+		  * f2102_state, f2102_address, f2102_rw
+
+		  Ports
+
+		  hle_state
+		*/
+		{RETRO_MEMDESC_SYSTEM_RAM, Memory,           0, 0, 0, 0, sizeof(Memory),       "M"},
+		{RETRO_MEMDESC_SYSTEM_RAM, R,                0, 0, 0, 0, sizeof(R),            "R"},
+		{RETRO_MEMDESC_SYSTEM_RAM, f2102_memory,     0, 0, 0, 0, sizeof(f2102_memory), "F"},
+		{RETRO_MEMDESC_VIDEO_RAM,  VIDEO_Buffer_raw, 0, 0, 0, 0, sizeof(VIDEO_Buffer_raw), "V"}
+	};
+	static struct retro_memory_map mem_map = { mem_descs, sizeof(mem_descs) / sizeof(mem_descs[0]) };
 
 	// init buffers, structs
 	memset(frame, 0, frameSize*sizeof(pixel_t));
@@ -219,6 +253,8 @@ void retro_init(void)
 			msg.frames = 600;
 			Environ(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
 	}
+
+	Environ(RETRO_ENVIRONMENT_SET_MEMORY_MAPS, &mem_map);
 }
 
 bool retro_load_game(const struct retro_game_info *info)
