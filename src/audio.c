@@ -32,7 +32,7 @@ short amp = FULL_AMPLITUDE; // tone amplitude (16384 = full)
 static const float decay = 0.998; // multiplier for amp per sample
 
 short ticks = 0; // unprocessed ticks in 1/100 of tick
-int sample = 0; // current sample buffer position
+static int sample = 0; // current sample buffer position
 
 void AUDIO_portReceive(int port, unsigned char val)
 {
@@ -102,12 +102,8 @@ void AUDIO_tick(int dt) // dt = ticks elapsed since last call
 
 void AUDIO_frame(void)
 {
-	while(sample<samplesPerFrame)
-	{
-		AUDIO_Buffer[sample]=0;
-		sample++;
-	}
 	// start a new audio frame
+	memset(AUDIO_Buffer, 0, sizeof(AUDIO_Buffer));
 	sample = 0;
 }
 
