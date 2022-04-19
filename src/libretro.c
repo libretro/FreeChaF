@@ -50,8 +50,6 @@
 
 pixel_t frame[frameSize];
 
-char *SystemPath;
-
 struct hle_state_s hle_state;
 
 retro_environment_t Environ;
@@ -169,6 +167,7 @@ void retro_init(void)
 	char PSU_1_Update_Path[PATH_MAX_LENGTH];
 	char PSU_1_Path[PATH_MAX_LENGTH];
 	char PSU_2_Path[PATH_MAX_LENGTH];
+	char *SystemPath;
 	struct retro_log_callback log;
 	static const struct retro_memory_descriptor mem_descs[] = {
 		/*
