@@ -141,8 +141,6 @@ void retro_set_audio_sample_batch(retro_audio_sample_batch_t fn) { AudioBatch = 
 void retro_set_input_poll(retro_input_poll_t fn) { InputPoll = fn; }
 void retro_set_input_state(retro_input_state_t fn) { InputState = fn; }
 
-struct retro_game_geometry Geometry;
-
 int joypad0[10]; // joypad 0 state
 int joypad1[10]; // joypad 1 state
 int joypre0[10]; // joypad 0 previous state
