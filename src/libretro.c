@@ -642,10 +642,10 @@ size_t retro_get_memory_size(unsigned id)
 	switch(id)
 	{
 		case RETRO_MEMORY_SYSTEM_RAM: // System Memory
-			return 0x10000; //65536
+			return R_SIZE;
 	
 		case RETRO_MEMORY_VIDEO_RAM: // Video Memory
-			return 0x2000; //8192
+			return sizeof(VIDEO_Buffer_raw); //8192
 
 		//case RETRO_MEMORY_SAVE_RAM: // SRAM / Regular save RAM
 		//case RETRO_MEMORY_RTC: // Real-time clock value  
@@ -658,7 +658,7 @@ void *retro_get_memory_data(unsigned id)
 	switch(id)
 	{
 		case RETRO_MEMORY_SYSTEM_RAM: // System Memory
-			return Memory;
+			return R;
 	
 		case RETRO_MEMORY_VIDEO_RAM: // Video Memory
 			return VIDEO_Buffer_raw;
