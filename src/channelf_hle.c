@@ -73,7 +73,7 @@ static int CHANNELF_HLE(void)
 	{
 	case 0x0: // init
 		memset (R, 0, sizeof(R));
-		if (Memory[0x800] == 0x55)
+		if (MEMORY_read8(0x800) == 0x55)
 		{
 			A = 0x55;
 			DC0 = 0x801;

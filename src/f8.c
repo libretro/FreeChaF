@@ -58,13 +58,12 @@ enum
 // Read 1-byte instruction operand
 uint8_t readOperand8(void)
 {
-	PC0++;
-	return Memory[PC0-1];
+	return MEMORY_read8(PC0++);
 }
 // Read 2-byte instruction operand
 uint16_t readOperand16(void)
 {
-	uint16_t val = (Memory[PC0]<<8) | Memory[PC0+1];
+	uint16_t val = MEMORY_read16(PC0);
 	PC0+=2;
 	return val;
 }
@@ -351,13 +350,13 @@ int SL_4(uint8_t v) // 15 SL 4 : A << 4
 
 int LM(uint8_t v) // 16 LM A <- (DC0), DC0 <- DC0 + 1
 {
-	A = Memory[DC0++];
+	A = MEMORY_read8(DC0++);
 	return 5;
 } 
 
 int ST(uint8_t v) // 17 ST (DC0) <- A, DC0 <- DC0 + 1 
 {
-	Memory[DC0++] = A;
+	MEMORY_write8(DC0++, A);
 	return 5;
 }        
 
@@ -617,37 +616,37 @@ int BZ_n(uint8_t v)   // 84 BZ n : branch if ZERO: PC0<-PC0+n+1
 
 int AM(uint8_t v)  // 88 AM  : A <- A+(DC0), DC0++
 {
-	A = Add8(A, Memory[DC0++]);
+	A = Add8(A, MEMORY_read8(DC0++));
 	return 5;
 } 
 
 int AMD(uint8_t v) // 89 AMD : A <- A+(DC0) decimal adjusted, DC0++
 {
-	A = AddBCD(A, Memory[DC0++]);
+	A = AddBCD(A, MEMORY_read8(DC0++));
 	return 5;
 } 
 
 int NM(uint8_t v) // 8A NM  : A <- A AND (DC0), DC0+1
 {
-	A = And8(A, Memory[DC0++]);
+	A = And8(A, MEMORY_read8(DC0++));
 	return 5;
 }
 
 int OM(uint8_t v) // 8B OM  : A <-  A OR (DC0), DC0+1
 {
-	A = Or8(A, Memory[DC0++]);
+	A = Or8(A, MEMORY_read8(DC0++));
 	return 5;
 } 
 
 int XM(uint8_t v) // 8C XM  : A <-  A OR (DC0), DC0+1
 {
-	A = Xor8(A, Memory[DC0++]);
+	A = Xor8(A, MEMORY_read8(DC0++));
 	return 5;
 }
 
 int CM(uint8_t v) // 8D CM  : (DC0) - A, only set status, DC0+1
 {
-	Sub8(Memory[DC0++], A);
+	Sub8(MEMORY_read8(DC0++), A);
 	return 5;
 } 
 
@@ -976,8 +975,8 @@ void F8_init()
 
 int F8_exec(void) /* execute a single instruction */
 {
-	PC0++;
-	return OpCodes[Memory[PC0-1]](Memory[PC0-1]);
+  	uint8_t opcode = MEMORY_read8(PC0++);
+	return OpCodes[opcode](opcode);
 }
 
 void F8_reset(void)

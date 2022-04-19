@@ -31,6 +31,9 @@ extern uint8_t Memory[MEMORY_SIZE];
 
 void MEMORY_reset(void);
 int CHANNELF_loadROM_libretro(const char* path, int address);
+uint8_t MEMORY_read8(uint16_t address);
+uint16_t MEMORY_read16(uint16_t address);
+void MEMORY_write8(uint16_t address, uint8_t val);
 
 #define R_SIZE 64
 extern uint8_t R[R_SIZE]; // 64 byte Scratchpad

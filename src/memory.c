@@ -71,6 +71,22 @@ int CHANNELF_loadROM_mem(const uint8_t* data, int size, int address)
 	return 1;
 }
 
+uint8_t MEMORY_read8(uint16_t address)
+{
+	return Memory[address];
+}
+
+void MEMORY_write8(uint16_t address, uint8_t val)
+{
+	Memory[address] = val;
+}
+
+uint16_t MEMORY_read16(uint16_t address)
+{
+	return (Memory[address]<<8) | Memory[address+1];
+}
+
+
 void MEMORY_reset(void)
 {
 	/* clear memory */
