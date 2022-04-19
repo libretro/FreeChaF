@@ -35,5 +35,8 @@ int CONTROLLER_swapped(void);
 
 extern unsigned char ControllerEnabled;
 extern unsigned char ControllerSwapped;
+extern int cursorX;
+extern int cursorDown;
+extern uint8_t CONTROLLER_State[3];
 
 #endif

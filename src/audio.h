@@ -18,8 +18,10 @@
 */
 
 extern short AUDIO_Buffer[735 * 2];
-extern unsigned char tone;
-extern short amp;
+extern unsigned char AUDIO_tone;
+extern short AUDIO_amp;
+extern unsigned int AUDIO_sampleInCycle;
+extern unsigned int AUDIO_ticks;
 
 void AUDIO_tick(int ticks);
 

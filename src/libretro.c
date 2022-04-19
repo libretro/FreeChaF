@@ -539,10 +539,22 @@ struct serialized_state
 	unsigned char ControllerSwapped;
 
 	unsigned char console_input;
-	unsigned char tone;
-	unsigned short amp;
+	unsigned char AUDIO_tone;
+	unsigned short AUDIO_amp;
 
 	struct hle_state_s hle_state;
+
+	unsigned int cursorX;
+	unsigned int cursorDown;
+
+	unsigned int AUDIO_sampleInCycle;
+	unsigned int AUDIO_ticks;
+
+	uint8_t joypad0[10]; // joypad 0 state
+	uint8_t joypad1[10]; // joypad 1 state
+
+	uint8_t CONTROLLER_State[3];
+	uint8_t padding[1];
 };
 
 size_t retro_serialize_size(void)
@@ -553,6 +565,7 @@ size_t retro_serialize_size(void)
 bool retro_serialize(void *data, size_t size)
 {
   	struct serialized_state *st = data;
+	unsigned int i;
 
 	if (size < sizeof (struct serialized_state))
 		return false;
@@ -585,10 +598,24 @@ bool retro_serialize(void *data, size_t size)
 	st->ControllerSwapped = ControllerSwapped;
 	st->console_input = console_input;
 
-	st->tone = tone;
-	st->amp = retro_cpu_to_be16(amp);
+	st->AUDIO_tone = AUDIO_tone;
+	st->AUDIO_amp = retro_cpu_to_be16(AUDIO_amp);
+	st->AUDIO_sampleInCycle = retro_cpu_to_be32(AUDIO_sampleInCycle);
+	st->AUDIO_ticks = retro_cpu_to_be32(AUDIO_ticks);
+
 	st->hle_state = hle_state;
 	st->CPU_Ticks_Debt = retro_cpu_to_be32(CPU_Ticks_Debt);
+
+	st->cursorX = retro_cpu_to_be32(cursorX);
+	st->cursorDown = retro_cpu_to_be32(cursorDown);
+
+	for(i=0; i<sizeof(joypad0)/sizeof(joypad0[0]); i++)
+	{
+		st->joypad0[i] = joypad0[i];
+		st->joypad1[i] = joypad1[i];
+	}
+
+	memcpy(st->CONTROLLER_State, CONTROLLER_State, sizeof(st->CONTROLLER_State));
 
 	return true;
 }
@@ -597,7 +624,7 @@ bool retro_unserialize(const void *data, size_t size)
 {
   	const struct serialized_state *st = data;
 
-	if (size < sizeof (struct serialized_state))
+	if (size < sizeof (struct serialized_state) - 40)
 		return false;
 
 	memcpy (Memory, st->Memory, MEMORY_SIZE);
@@ -630,9 +657,28 @@ bool retro_unserialize(const void *data, size_t size)
 	console_input = st->console_input;
 	hle_state = st->hle_state;
 
-	tone = st->tone;
-	amp = retro_be_to_cpu16(st->amp);
+	AUDIO_tone = st->AUDIO_tone;
+	AUDIO_amp = retro_be_to_cpu16(st->AUDIO_amp);
 	CPU_Ticks_Debt = retro_be_to_cpu32(st->CPU_Ticks_Debt);
+
+	if (size >= sizeof (struct serialized_state))
+	{
+		unsigned i;
+
+		cursorX = retro_be_to_cpu16(st->cursorX);
+		cursorDown = retro_be_to_cpu16(st->cursorDown);
+
+		AUDIO_sampleInCycle = retro_be_to_cpu32(st->AUDIO_sampleInCycle);
+		AUDIO_ticks = retro_be_to_cpu32(st->AUDIO_ticks);
+
+		for(i=0; i<sizeof(joypad0)/sizeof(joypad0[0]); i++)
+		{
+			joypad0[i] = st->joypad0[i];
+			joypad1[i] = st->joypad1[i];
+		}
+
+		memcpy(CONTROLLER_State, st->CONTROLLER_State, sizeof(st->CONTROLLER_State));
+	}
 
 	return true;
 }
