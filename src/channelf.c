@@ -14,9 +14,6 @@
 	You should have received a copy of the GNU General Public License
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "libretro.h"
 #include "channelf.h"
 #include "memory.h"
@@ -27,40 +24,6 @@
 #include "video.h"
 
 int CPU_Ticks_Debt = 0;
-
-int CHANNELF_loadROM(const char* path, int address)
-{
-	uint8_t word;
-	FILE *fp;
-	if((fp = fopen(path,"rb"))!=NULL)
-	{
-		while(fread(&word,sizeof(word),1,fp) && address<0x10000)
-		{
-			Memory[address] = word;
-			address++;
-		}
-		
-		if (address>MEMORY_RAMStart) { MEMORY_RAMStart = address; }
-
-		fclose(fp);
-		return 1;	
-	}
-   return 0;
-}
-
-int CHANNELF_loadROM_mem(const uint8_t* data, int size, int address)
-{
-	int length = size;
-	if (length > 0x10000 - address)
-	{
-		length = 0x10000 - address;
-	}
-	memcpy(Memory + address, data, length);
-		
-	if (address+length>MEMORY_RAMStart) { MEMORY_RAMStart = address+length; }
-
-	return 1;
-}
 
 void CHANNELF_run(void) // run for one frame
 {

@@ -30,6 +30,7 @@ extern uint8_t Memory[MEMORY_SIZE];
 // vram     - 0x2000 ...
 
 void MEMORY_reset(void);
+int CHANNELF_loadROM_libretro(const char* path, int address);
 
 #define R_SIZE 64
 extern uint8_t R[R_SIZE]; // 64 byte Scratchpad

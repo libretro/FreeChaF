@@ -23,6 +23,7 @@
 #include <file/file_path.h>
 #include <retro_miscellaneous.h>
 #include <retro_endianness.h>
+#include <streams/file_stream.h>
 
 #include "memory.h"
 #include "channelf.h"
@@ -59,7 +60,6 @@ retro_audio_sample_t Audio;
 retro_audio_sample_batch_t AudioBatch;
 retro_input_poll_t InputPoll;
 retro_input_state_t InputState;
-struct retro_vfs_interface *vfs_interface;
 
 void retro_set_environment(retro_environment_t fn)
 {
@@ -75,11 +75,11 @@ void retro_set_environment(retro_environment_t fn)
 
 	Environ = fn;
 
-	vfs_interface_info.required_interface_version = 1;
+	vfs_interface_info.required_interface_version = FILESTREAM_REQUIRED_VFS_VERSION;
 	vfs_interface_info.iface = NULL;
 	if (fn(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info))
 	{
-		vfs_interface = vfs_interface_info.iface;
+		filestream_vfs_init(&vfs_interface_info);
 	}
 
 	fn(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
@@ -93,47 +93,6 @@ static void update_variables(void)
 
 	hle_state.fast_screen_clear = (Environ(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) && strcmp(var.value, "enabled") == 0;
 }
-
-static int CHANNELF_loadROM_libretro(const char* path, int address)
-{
-	if (vfs_interface != NULL) // load rom using Libretro's vfs interface
-	{
-		struct retro_vfs_file_handle *h = vfs_interface->open(path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_NONE);
-		ssize_t size;
-		if (!h) // problem loading file
-		{
-			return 0;
-		}
-
-		size = vfs_interface->size(h);
-		if (size <= 0) // problem loading file
-		{
-			return 0;
-		}
-		if (size > MEMORY_SIZE - address) // if too large to fit in memory...
-		{
-			size = MEMORY_SIZE - address;
-		}
-
-		size = vfs_interface->read(h, Memory + address, size);
-		vfs_interface->close(h);
-		if (size <= 0) // problem reading file
-		{
-			return 0;
-		}
-
-		if (address+size>MEMORY_RAMStart) 
-		{
-			MEMORY_RAMStart = address+size;
-		}
-
-		return 1;
-	}
-	
-	// If we can't use Libretro's vfs interface to load the rom, do things the old way ... 
-	return CHANNELF_loadROM(path, address);
-}
-
 
 void retro_set_video_refresh(retro_video_refresh_t fn) { Video = fn; }
 void retro_set_audio_sample(retro_audio_sample_t fn) { Audio = fn; }
