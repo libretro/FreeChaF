@@ -17,9 +17,11 @@
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
 
-void CONTROLLER_portReceive(int port, unsigned char val);
+#include <stdint.h>
 
-int CONTROLLER_portRead(int port);
+void CONTROLLER_portReceive(uint8_t port, uint8_t val);
+
+int CONTROLLER_portRead(uint8_t port);
 
 void CONTROLLER_setInput(int control, int state);
 

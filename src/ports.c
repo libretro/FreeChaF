@@ -15,27 +15,29 @@
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
 
+#include <string.h>
+
 #include "ports.h"
 #include "f2102.h"
 #include "audio.h"
 #include "video.h"
 #include "controller.h"
 
-unsigned char Ports[64];
+uint8_t Ports[64];
 
 // Read state of port
-int PORTS_read(int port)
+uint8_t PORTS_read(uint8_t port)
 {
 	return Ports[port] | CONTROLLER_portRead(port); // controllers don't latch?
 }
 
 // Write data to port
-void PORTS_write(int port, unsigned char val)
+void PORTS_write(uint8_t port, uint8_t val)
 {
 	Ports[port] = val;
 }
 
-void PORTS_notify(int port, unsigned char val)
+void PORTS_notify(uint8_t port, uint8_t val)
 {
 	Ports[port] = val;
 
@@ -47,7 +49,5 @@ void PORTS_notify(int port, unsigned char val)
 
 void PORTS_reset(void)
 {
-	int i;
-	for(i=0; i<64; i++)
-		Ports[i] = 0;
+	memset(Ports, 0, sizeof(Ports));
 }

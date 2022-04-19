@@ -18,7 +18,7 @@
 #include "video.h"
 
 pixel_t VIDEO_Buffer_rgb[8192]; // 128x64
-unsigned char VIDEO_Buffer_raw[8192]; // 128x64
+uint8_t VIDEO_Buffer_raw[8192]; // 128x64
 static const pixel_t colors[8] =
   {
 	  vRGB(0x10, 0x10, 0x10),
@@ -30,19 +30,17 @@ static const pixel_t colors[8] =
 	  vRGB(0xA6, 0xFF, 0x91),
 	  vRGB(0xD0, 0xCE, 0xFF)
   };
-static const unsigned int palette[16] = {0,1,1,1, 7,2,4,3, 6,2,4,3, 5,2,4,3}; // bk wh wh wh, bl B G R, gr B G R, gy B G R...
+static const uint8_t palette[16] = {0,1,1,1, 7,2,4,3, 6,2,4,3, 5,2,4,3}; // bk wh wh wh, bl B G R, gr B G R, gy B G R...
 
-unsigned char ARM = 0;
-unsigned char X = 0;
-unsigned char Y = 0;
-unsigned char Color = 2; 
+uint8_t ARM = 0;
+uint8_t X = 0;
+uint8_t Y = 0;
+uint8_t Color = 2; 
 
 void VIDEO_drawFrame(void)
 {
 	int row;
 	int col;
-	int color;
-	int pal;
 
 	for(row=0; row<64; row++)
 	{
@@ -53,19 +51,19 @@ void VIDEO_drawFrame(void)
 		// (palette is shifted by two and added to 'color'
 		//  to find palette index which holds the color's index)
 		
-		pal = ((VIDEO_Buffer_raw[(row<<7)+125]&2)>>1) | (VIDEO_Buffer_raw[(row<<7)+126]&3);
+		uint8_t pal = ((VIDEO_Buffer_raw[(row<<7)+125]&2)>>1) | (VIDEO_Buffer_raw[(row<<7)+126]&3);
 		pal = (pal<<2) & 0xC;
 		
 		for(col=0; col<128; col++)
 		{
-			color = (VIDEO_Buffer_raw[(row<<7)+col]) & 0x3;
+			uint8_t color = (VIDEO_Buffer_raw[(row<<7)+col]) & 0x3;
 			VIDEO_Buffer_rgb[(row<<7)+col] = colors[palette[pal|color]&0x7];
 		}
 	}
 
 }
 
-void VIDEO_portReceive(int port, int val)
+void VIDEO_portReceive(uint8_t port, uint8_t val)
 {
 	switch(port)
 	{

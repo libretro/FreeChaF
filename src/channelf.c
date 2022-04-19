@@ -30,7 +30,7 @@ int CPU_Ticks_Debt = 0;
 
 int CHANNELF_loadROM(const char* path, int address)
 {
-	unsigned char word;
+	uint8_t word;
 	FILE *fp;
 	if((fp = fopen(path,"rb"))!=NULL)
 	{
@@ -48,7 +48,7 @@ int CHANNELF_loadROM(const char* path, int address)
    return 0;
 }
 
-int CHANNELF_loadROM_mem(const unsigned char* data, int size, int address)
+int CHANNELF_loadROM_mem(const uint8_t* data, int size, int address)
 {
 	int length = size;
 	if (length > 0x10000 - address)

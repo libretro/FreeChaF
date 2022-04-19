@@ -24,7 +24,7 @@ extern int CPU_Ticks_Debt;
 
 int CHANNELF_loadROM(const char* path, int address);
 
-int CHANNELF_loadROM_mem(const unsigned char* data, int sz, int address);
+int CHANNELF_loadROM_mem(const uint8_t* data, int sz, int address);
 
 void CHANNELF_run(void);
 

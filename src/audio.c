@@ -20,21 +20,21 @@
 
 #include "sintable.h"
 
-short AUDIO_Buffer[735 * 2];
+int16_t AUDIO_Buffer[735 * 2];
 
-unsigned char AUDIO_tone = 0; // current tone
+uint8_t AUDIO_tone = 0; // current tone
 
 static const int samplesPerFrame = 735; // sampleRate / framesPerSecond
 
 unsigned int AUDIO_sampleInCycle = 0; // time since start of tone, resets to 0 after every full cycle
 #define FULL_AMPLITUDE 16384
-short AUDIO_amp = FULL_AMPLITUDE; // tone amplitude (16384 = full)
+int16_t AUDIO_amp = FULL_AMPLITUDE; // tone amplitude (16384 = full)
 static const float decay = 0.998; // multiplier for amp per sample
 
 unsigned int AUDIO_ticks = 0; // unprocessed ticks in 1/100 of tick
 static int sample = 0; // current sample buffer position
 
-void AUDIO_portReceive(int port, unsigned char val)
+void AUDIO_portReceive(uint8_t port, uint8_t val)
 {
 	if(port==5)
 	{

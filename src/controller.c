@@ -21,14 +21,14 @@
 
 #include <stdio.h>
 
-int State[] = {0,0,0};
+uint8_t CONTROLLER_State[] = {0,0,0};
 unsigned char ControllerEnabled = 0;
 
 #define Console 0
 #define ControlA 1
 #define ControlB 2
 
-static const int ConsolePort = 0;
+static const uint8_t ConsolePort = 0;
 #define ControlAPort (ControllerSwapped ? 4 : 1)
 #define ControlBPort (ControllerSwapped ? 1 : 4)
 unsigned char ControllerSwapped = 0;
@@ -54,15 +54,15 @@ void setButton(int control, int button, int pressed)
    */
 
    if(pressed)
-      State[control] |= 1<<button;
+      CONTROLLER_State[control] |= 1<<button;
    else
-      State[control] &= (1<<button)^0xFF;
+      CONTROLLER_State[control] &= (1<<button)^0xFF;
 }
 
 void CONTROLLER_setInput(int control, int state)
 {
 	if(control>=0 && control<=2)
-		State[control] = state;
+		CONTROLLER_State[control] = state;
 }
 
 void CONTROLLER_swap(void)
@@ -75,21 +75,21 @@ int CONTROLLER_swapped(void)
 	return ControllerSwapped;
 }
 
-int CONTROLLER_portRead(int port)
+int CONTROLLER_portRead(uint8_t port)
 {
 	if(port==ConsolePort)
-		 return (State[Console]^0xFF) & 0x0F;
+		 return (CONTROLLER_State[Console]^0xFF) & 0x0F;
 	if(ControllerEnabled)
    {
       if(port==ControlAPort)
-         return(State[ControlA]^0xFF);
+         return(CONTROLLER_State[ControlA]^0xFF);
       if(port==ControlBPort)
-         return(State[ControlB]^0xFF);
+         return(CONTROLLER_State[ControlB]^0xFF);
    }
 	return 0;
 }
 
-void CONTROLLER_portReceive(int port, unsigned char val)
+void CONTROLLER_portReceive(uint8_t port, uint8_t val)
 {
 	if(port==ConsolePort) // Console
 		ControllerEnabled = (val&0x40)==0;

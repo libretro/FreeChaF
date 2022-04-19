@@ -24,12 +24,12 @@ void unsupported_hle_function(void);
 
 struct hle_state_s
 {
-	unsigned char psu1_hle;
-	unsigned char psu2_hle;
-	unsigned char fast_screen_clear;
-	unsigned char screen_clear_row;
-	unsigned char screen_clear_pal;
-	unsigned char screen_clear_color;
+	uint8_t psu1_hle;
+	uint8_t psu2_hle;
+	uint8_t fast_screen_clear;
+	uint8_t screen_clear_row;
+	uint8_t screen_clear_pal;
+	uint8_t screen_clear_color;
 };
 
 extern struct hle_state_s hle_state;

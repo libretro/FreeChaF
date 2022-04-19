@@ -516,31 +516,31 @@ void retro_reset(void)
 struct serialized_state
 {
 	unsigned int CPU_Ticks_Debt;
-	unsigned char Memory[MEMORY_SIZE];
-	unsigned char R[R_SIZE]; // 64 byte Scratchpad
-	unsigned char VIDEO_Buffer[8192];
-	unsigned char Ports[64];
+	uint8_t Memory[MEMORY_SIZE];
+	uint8_t R[R_SIZE]; // 64 byte Scratchpad
+	uint8_t VIDEO_Buffer[8192];
+	uint8_t Ports[64];
 
-	unsigned short PC0; // Program Counter
-	unsigned short PC1; // Program Counter alternate
-	unsigned short DC0; // Data Counter
-	unsigned short DC1; // Data Counter alternate
-	unsigned char ISAR; // Indirect Scratchpad Address Register (6-bit)
-	unsigned char W; // Status Register (flags)
+	uint16_t PC0; // Program Counter
+	uint16_t PC1; // Program Counter alternate
+	uint16_t DC0; // Data Counter
+	uint16_t DC1; // Data Counter alternate
+	uint8_t ISAR; // Indirect Scratchpad Address Register (6-bit)
+	uint8_t W; // Status Register (flags)
 
-	unsigned short f2102_state;
-	unsigned char f2102_memory[1024];
-	unsigned short f2102_address;
-	unsigned char f2102_rw;
-	unsigned char A; // Accumulator
+	uint16_t f2102_state;
+	uint8_t f2102_memory[1024];
+	uint16_t f2102_address;
+	uint8_t f2102_rw;
+	uint8_t A; // Accumulator
 
-	unsigned char ARM, X, Y, Color;
-	unsigned char ControllerEnabled;
-	unsigned char ControllerSwapped;
+	uint8_t ARM, X, Y, Color;
+	uint8_t ControllerEnabled;
+	uint8_t ControllerSwapped;
 
-	unsigned char console_input;
-	unsigned char AUDIO_tone;
-	unsigned short AUDIO_amp;
+	uint8_t console_input;
+	uint8_t AUDIO_tone;
+	uint16_t AUDIO_amp;
 
 	struct hle_state_s hle_state;
 

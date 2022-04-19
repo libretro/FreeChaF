@@ -20,12 +20,12 @@
 #include "ports.h"
 
 
-unsigned short f2102_state = 0;
-unsigned char f2102_memory[1024];
-unsigned short f2102_address = 0;
-unsigned char f2102_rw = 0;
+uint16_t f2102_state = 0;
+uint8_t f2102_memory[1024];
+uint16_t f2102_address = 0;
+uint8_t f2102_rw = 0;
 
-void F2102_portReceive(int port, unsigned char val)
+void F2102_portReceive(uint8_t port, uint8_t val)
 {
 	switch(port)
 	{

@@ -1,5 +1,8 @@
 #ifndef PORTS_H
 #define PORTS_H
+
+#include <stdint.h>
+
 /*
 	This file is part of FreeChaF.
 
@@ -18,13 +21,13 @@
 */
 
 // IO Ports 
-extern unsigned char Ports[64];
+extern uint8_t Ports[64];
 
-int PORTS_read(int port);
+uint8_t PORTS_read(uint8_t port);
 
-void PORTS_write(int port, unsigned char val);
+void PORTS_write(uint8_t port, uint8_t val);
 
-void PORTS_notify(int port, unsigned char val);
+void PORTS_notify(uint8_t port, uint8_t val);
 
 void PORTS_reset(void);
 
