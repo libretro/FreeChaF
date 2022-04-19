@@ -576,12 +576,6 @@ int LISL_i(uint8_t v) // 6x LISL i : ISARL <- i
 	return 2;
 }
 
-int CLR(uint8_t v) // 70 CLR : A <- 0
-{
-	A = 0;
-	return 2;
-}
-
 int LIS_i(uint8_t v) // 7x LIS i : A <- i 
 { 
 	A = v&0xF;
@@ -912,11 +906,10 @@ void F8_init()
 		OpCodes[0x60+i] = LISU_i;  // 6x LISU i : ISARU <- i 
 		OpCodes[0x68+i] = LISL_i;  // 6x LISL i : ISARL <- i
 	}
-	OpCodes[0x70] = CLR;     // 70 CLR    : A <- 0
 
-	for(i=0; i<15; i++)
+	for(i=0; i<16; i++)
 	{
-		OpCodes[0x71+i] = LIS_i;   // 7x LIS i  : A <- i
+		OpCodes[0x70+i] = LIS_i;   // 7x LIS i  : A <- i
 	}
 	OpCodes[0x80] = BT_t_n; // 8x BT t, n : bit test t with W
 	OpCodes[0x81] = BP_n;   // 81 BP n    : branch if POSITIVE: PC0<-PC0+n+1
