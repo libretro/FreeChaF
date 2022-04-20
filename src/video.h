@@ -22,10 +22,10 @@
 // 128x64
 #define VIDEO_SIZE 8192
 extern uint8_t VIDEO_Buffer_raw[VIDEO_SIZE];
-extern uint8_t ARM;
-extern uint8_t X;
-extern uint8_t Y;
-extern uint8_t Color;
+extern uint8_t VIDEO_ARM;
+extern uint8_t VIDEO_X;
+extern uint8_t VIDEO_Y;
+extern uint8_t VIDEO_Color;
 
 void VIDEO_portReceive(uint8_t port, uint8_t val);
 

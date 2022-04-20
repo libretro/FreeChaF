@@ -493,7 +493,7 @@ struct serialized_state
 	uint8_t f2102_rw;
 	uint8_t F8_A; // Accumulator
 
-	uint8_t ARM, X, Y, Color;
+	uint8_t VIDEO_ARM, VIDEO_X, VIDEO_Y, VIDEO_Color;
 	uint8_t ControllerEnabled;
 	uint8_t ControllerSwapped;
 
@@ -544,10 +544,10 @@ bool retro_serialize(void *data, size_t size)
 	st->F8_DC0 = retro_cpu_to_be16(F8_DC0);
 	st->F8_DC1 = retro_cpu_to_be16(F8_DC1);
 
-	st->X = X;
-	st->Y = Y;
-	st->Color = Color;
-	st->ARM = ARM;
+	st->VIDEO_X = VIDEO_X;
+	st->VIDEO_Y = VIDEO_Y;
+	st->VIDEO_Color = VIDEO_Color;
+	st->VIDEO_ARM = VIDEO_ARM;
 
 	st->f2102_rw = f2102_rw;
 	st->f2102_address = retro_cpu_to_be16(f2102_address);
@@ -603,10 +603,10 @@ bool retro_unserialize(const void *data, size_t size)
 	F8_DC0 = retro_be_to_cpu16(st->F8_DC0);
 	F8_DC1 = retro_be_to_cpu16(st->F8_DC1);
 
-	X = st->X;
-	Y = st->Y;
-	Color = st->Color;
-	ARM = st->ARM;
+	VIDEO_X = st->VIDEO_X;
+	VIDEO_Y = st->VIDEO_Y;
+	VIDEO_Color = st->VIDEO_Color;
+	VIDEO_ARM = st->VIDEO_ARM;
 
 	f2102_rw = st->f2102_rw;
 	f2102_address = retro_be_to_cpu16(st->f2102_address);

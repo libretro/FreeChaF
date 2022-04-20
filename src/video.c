@@ -32,10 +32,10 @@ static const pixel_t colors[8] =
   };
 static const uint8_t palette[16] = {0,1,1,1, 7,2,4,3, 6,2,4,3, 5,2,4,3}; // bk wh wh wh, bl B G R, gr B G R, gy B G R...
 
-uint8_t ARM = 0;
-uint8_t X = 0;
-uint8_t Y = 0;
-uint8_t Color = 2; 
+uint8_t VIDEO_ARM = 0;
+uint8_t VIDEO_X = 0;
+uint8_t VIDEO_Y = 0;
+uint8_t VIDEO_Color = 2; 
 
 void VIDEO_drawFrame(void)
 {
@@ -69,22 +69,22 @@ void VIDEO_portReceive(uint8_t port, uint8_t val)
 	{
 		case 0: // ARM 
 			val &= 0x60;
-			if(val==0x40 && ARM==0x60) // Strobed
+			if(val==0x40 && VIDEO_ARM==0x60) // Strobed
 			{
 				// Write to display buffer
-				VIDEO_Buffer_raw[(Y<<7)+X] = Color;
+				VIDEO_Buffer_raw[(VIDEO_Y<<7)+VIDEO_X] = VIDEO_Color;
 			}
-			ARM = val;
+			VIDEO_ARM = val;
 		break;
 
 		case 1: // Set Color (bits 6 and 7) 
-			Color = ((val ^ 0xFF)>>6)&3;
+			VIDEO_Color = ((val ^ 0xFF)>>6)&3;
 			break;
 		case 4: // X coordinate, inverted (bits 0-6)
-			X = (val ^ 0xFF) & 0x7F;
+			VIDEO_X = (val ^ 0xFF) & 0x7F;
 			break;
 		case 5: // Y coordinate, inverted (bits 0-5)
-			Y = (val ^ 0xFF) & 0x3F;
+			VIDEO_Y = (val ^ 0xFF) & 0x3F;
 			break;
 	}
 }
