@@ -30,7 +30,8 @@ extern uint8_t Memory[MEMORY_SIZE];
 // vram     - 0x2000 ...
 
 void MEMORY_reset(void);
-int CHANNELF_loadROM_libretro(const char* path, int address);
+int MEMORY_loadCartROM(const void* data, size_t size);
+int MEMORY_loadSysROM_libretro(const char* path, int address);
 uint8_t MEMORY_read8(uint16_t address);
 uint16_t MEMORY_read16(uint16_t address);
 void MEMORY_write8(uint16_t address, uint8_t val);
@@ -45,5 +46,6 @@ extern uint16_t DC0; // Data Counter
 extern uint16_t DC1; // Data Counter alternate
 extern uint8_t ISAR; // Indirect Scratchpad Address Register (6-bit)
 extern uint8_t W; // Status Register (flags)
+extern uint8_t MEMORY_Multicart;
 
 #endif

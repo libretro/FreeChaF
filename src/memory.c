@@ -22,8 +22,12 @@
 
 int MEMORY_RAMStart;
 uint8_t Memory[MEMORY_SIZE];
+static uint8_t *ROM;
+static uint32_t ROMSize;
+static int is_multicart;
+uint8_t MEMORY_Multicart;
 
-int CHANNELF_loadROM_libretro(const char* path, int address)
+int MEMORY_loadSysROM_libretro(const char* path, int address)
 {
 	RFILE *h = filestream_open(path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_NONE);
 	ssize_t size;
@@ -57,38 +61,69 @@ int CHANNELF_loadROM_libretro(const char* path, int address)
 	return 1;
 }
 
-int CHANNELF_loadROM_mem(const uint8_t* data, int size, int address)
+int MEMORY_loadCartROM(const void* data, size_t size)
 {
+	const uint16_t address = 0x800;
 	int length = size;
-	if (length > 0x10000 - address)
-	{
-		length = 0x10000 - address;
+	if (size == (1 << 18)) { // Sean Riddle multicart
+		length = 0x1800;
+		is_multicart = 1;
+	} else {
+		is_multicart = 0;
 	}
-	memcpy(Memory + address, data, length);
+	ROM = malloc(size);
+	if (!ROM) {
+		return 0;
+	}
+
+	ROMSize = size;
+	memcpy(ROM, data, size);
 		
 	if (address+length>MEMORY_RAMStart) { MEMORY_RAMStart = address+length; }
 
 	return 1;
 }
 
+static uint8_t *translate(uint16_t address)
+{
+	if (address >= 0x800 && address < 0x2000 && is_multicart) {
+		uint32_t mapped = (address - 0x800) | ((MEMORY_Multicart & 0x1f) << 13) | ((MEMORY_Multicart & 0x20) << 7);
+		if (mapped < ROMSize)
+			return &ROM[mapped];
+	}
+	if (address >= 0x800 && address < (0x800 + ROMSize)) {
+		return &ROM[address - 0x800];
+	}
+	return &Memory[address];
+}
+
 uint8_t MEMORY_read8(uint16_t address)
 {
-	return Memory[address];
+	uint8_t *ta = translate(address);
+	return *ta;
 }
 
 void MEMORY_write8(uint16_t address, uint8_t val)
 {
-	Memory[address] = val;
+	if (address == 0x3000 && is_multicart) {
+		MEMORY_Multicart = val;
+		return;
+	}
+	if (address < MEMORY_RAMStart) { // Protect ROM
+		return;
+	}
+	*translate(address) = val;
 }
 
 uint16_t MEMORY_read16(uint16_t address)
 {
-	return (Memory[address]<<8) | Memory[address+1];
+	uint8_t *ta = translate(address);
+	return (ta[0]<<8) | ta[1];
 }
-
 
 void MEMORY_reset(void)
 {
 	/* clear memory */
 	memset (Memory + MEMORY_RAMStart, 0, MEMORY_SIZE - MEMORY_RAMStart);
+	MEMORY_Multicart = 0;
 }

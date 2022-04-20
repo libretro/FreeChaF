@@ -177,13 +177,13 @@ void retro_init(void)
 
 	// load PSU 1 Update
 	fill_pathname_join(PSU_1_Update_Path, SystemPath, "sl90025.bin", PATH_MAX_LENGTH);
-	if(!CHANNELF_loadROM_libretro(PSU_1_Update_Path, 0))
+	if(!MEMORY_loadSysROM_libretro(PSU_1_Update_Path, 0))
 	{
 		log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Failed loading Channel F II BIOS(1) from: %s\n", PSU_1_Update_Path);
 		
 		// load PSU 1 Original
 		fill_pathname_join(PSU_1_Path, SystemPath, "sl31253.bin", PATH_MAX_LENGTH);
-		if(!CHANNELF_loadROM_libretro(PSU_1_Path, 0))
+		if(!MEMORY_loadSysROM_libretro(PSU_1_Path, 0))
 		{
 			log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Failed loading Channel F BIOS(1) from: %s\n", PSU_1_Path);
 			log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Switching to HLE for PSU1\n");
@@ -193,7 +193,7 @@ void retro_init(void)
 
 	// load PSU 2
 	fill_pathname_join(PSU_2_Path, SystemPath, "sl31254.bin", PATH_MAX_LENGTH);
-	if(!CHANNELF_loadROM_libretro(PSU_2_Path, 0x400))
+	if(!MEMORY_loadSysROM_libretro(PSU_2_Path, 0x400))
 	{
 		log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
 		log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Switching to HLE for PSU2\n");
@@ -240,7 +240,7 @@ bool retro_load_game(const struct retro_game_info *info)
 	};
 
 	update_variables();
-	if (!CHANNELF_loadROM_mem(info->data, info->size, 0x800))
+	if (!MEMORY_loadCartROM(info->data, info->size))
 		return false;
 
 	Environ(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);
@@ -513,7 +513,7 @@ struct serialized_state
 	uint8_t joypad1[10]; // joypad 1 state
 
 	uint8_t CONTROLLER_State[3];
-	uint8_t padding[1];
+	uint8_t MEMORY_Multicart;
 };
 
 size_t retro_serialize_size(void)
@@ -576,6 +576,8 @@ bool retro_serialize(void *data, size_t size)
 
 	memcpy(st->CONTROLLER_State, CONTROLLER_State, sizeof(st->CONTROLLER_State));
 
+	st->MEMORY_Multicart = MEMORY_Multicart;
+
 	return true;
 }
 
@@ -637,6 +639,8 @@ bool retro_unserialize(const void *data, size_t size)
 		}
 
 		memcpy(CONTROLLER_State, st->CONTROLLER_State, sizeof(st->CONTROLLER_State));
+
+		MEMORY_Multicart = st->MEMORY_Multicart;
 	}
 
 	return true;
