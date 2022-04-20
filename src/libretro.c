@@ -153,7 +153,7 @@ void retro_init(void)
 		  hle_state
 		*/
 		{RETRO_MEMDESC_SYSTEM_RAM, Memory,           0, 0, 0, 0, sizeof(Memory),       "M"},
-		{RETRO_MEMDESC_SYSTEM_RAM, R,                0, 0, 0, 0, sizeof(R),            "R"},
+		{RETRO_MEMDESC_SYSTEM_RAM, F8_R,             0, 0, 0, 0, sizeof(F8_R),         "R"},
 		{RETRO_MEMDESC_SYSTEM_RAM, f2102_memory,     0, 0, 0, 0, sizeof(f2102_memory), "F"},
 		{RETRO_MEMDESC_VIDEO_RAM,  VIDEO_Buffer_raw, 0, 0, 0, 0, sizeof(VIDEO_Buffer_raw), "V"}
 	};
@@ -476,22 +476,22 @@ struct serialized_state
 {
 	unsigned int CPU_Ticks_Debt;
 	uint8_t Memory[MEMORY_SIZE];
-	uint8_t R[R_SIZE]; // 64 byte Scratchpad
+	uint8_t F8_R[R_SIZE]; // 64 byte Scratchpad
 	uint8_t VIDEO_Buffer[8192];
 	uint8_t Ports[64];
 
-	uint16_t PC0; // Program Counter
-	uint16_t PC1; // Program Counter alternate
-	uint16_t DC0; // Data Counter
-	uint16_t DC1; // Data Counter alternate
-	uint8_t ISAR; // Indirect Scratchpad Address Register (6-bit)
-	uint8_t W; // Status Register (flags)
+	uint16_t F8_PC0; // Program Counter
+	uint16_t F8_PC1; // Program Counter alternate
+	uint16_t F8_DC0; // Data Counter
+	uint16_t F8_DC1; // Data Counter alternate
+	uint8_t F8_ISAR; // Indirect Scratchpad Address Register (6-bit)
+	uint8_t F8_W; // Status Register (flags)
 
 	uint16_t f2102_state;
 	uint8_t f2102_memory[1024];
 	uint16_t f2102_address;
 	uint8_t f2102_rw;
-	uint8_t A; // Accumulator
+	uint8_t F8_A; // Accumulator
 
 	uint8_t ARM, X, Y, Color;
 	uint8_t ControllerEnabled;
@@ -530,19 +530,19 @@ bool retro_serialize(void *data, size_t size)
 		return false;
 
 	memcpy(st->Memory, Memory, MEMORY_SIZE);
-	memcpy(st->R, R, R_SIZE);
+	memcpy(st->F8_R, F8_R, R_SIZE);
 	memcpy(st->VIDEO_Buffer, VIDEO_Buffer_raw, sizeof(VIDEO_Buffer_raw));
 	memcpy(st->Ports, Ports, sizeof(Ports));
 	memcpy(st->f2102_memory, f2102_memory, sizeof(f2102_memory));
 
-	st->A = A;
-	st->ISAR = ISAR;
-	st->W = W;
+	st->F8_A = F8_A;
+	st->F8_ISAR = F8_ISAR;
+	st->F8_W = F8_W;
 
-	st->PC0 = retro_cpu_to_be16(PC0);
-	st->PC1 = retro_cpu_to_be16(PC1);
-	st->DC0 = retro_cpu_to_be16(DC0);
-	st->DC1 = retro_cpu_to_be16(DC1);
+	st->F8_PC0 = retro_cpu_to_be16(F8_PC0);
+	st->F8_PC1 = retro_cpu_to_be16(F8_PC1);
+	st->F8_DC0 = retro_cpu_to_be16(F8_DC0);
+	st->F8_DC1 = retro_cpu_to_be16(F8_DC1);
 
 	st->X = X;
 	st->Y = Y;
@@ -589,19 +589,19 @@ bool retro_unserialize(const void *data, size_t size)
 		return false;
 
 	memcpy (Memory, st->Memory, MEMORY_SIZE);
-	memcpy (R, st->R, R_SIZE);
+	memcpy (F8_R, st->F8_R, R_SIZE);
 	memcpy (VIDEO_Buffer_raw, st->VIDEO_Buffer, sizeof(VIDEO_Buffer_raw));
 	memcpy (Ports, st->Ports, sizeof(Ports));
 	memcpy (f2102_memory, st->f2102_memory, sizeof(f2102_memory));
 
-	A = st->A;
-	ISAR = st->ISAR;
-	W = st->W;
+	F8_A = st->F8_A;
+	F8_ISAR = st->F8_ISAR;
+	F8_W = st->F8_W;
 
-	PC0 = retro_be_to_cpu16(st->PC0);
-	PC1 = retro_be_to_cpu16(st->PC1);
-	DC0 = retro_be_to_cpu16(st->DC0);
-	DC1 = retro_be_to_cpu16(st->DC1);
+	F8_PC0 = retro_be_to_cpu16(st->F8_PC0);
+	F8_PC1 = retro_be_to_cpu16(st->F8_PC1);
+	F8_DC0 = retro_be_to_cpu16(st->F8_DC0);
+	F8_DC1 = retro_be_to_cpu16(st->F8_DC1);
 
 	X = st->X;
 	Y = st->Y;
@@ -667,7 +667,7 @@ void *retro_get_memory_data(unsigned id)
 	switch(id)
 	{
 		case RETRO_MEMORY_SYSTEM_RAM: // System Memory
-			return R;
+			return F8_R;
 	
 		case RETRO_MEMORY_VIDEO_RAM: // Video Memory
 			return VIDEO_Buffer_raw;

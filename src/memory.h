@@ -37,15 +37,15 @@ uint16_t MEMORY_read16(uint16_t address);
 void MEMORY_write8(uint16_t address, uint8_t val);
 
 #define R_SIZE 64
-extern uint8_t R[R_SIZE]; // 64 byte Scratchpad
+extern uint8_t F8_R[R_SIZE]; // 64 byte Scratchpad
 
-extern uint8_t A; // Accumulator
-extern uint16_t PC0; // Program Counter
-extern uint16_t PC1; // Program Counter alternate
-extern uint16_t DC0; // Data Counter
-extern uint16_t DC1; // Data Counter alternate
-extern uint8_t ISAR; // Indirect Scratchpad Address Register (6-bit)
-extern uint8_t W; // Status Register (flags)
+extern uint8_t F8_A; // Accumulator
+extern uint16_t F8_PC0; // Program Counter
+extern uint16_t F8_PC1; // Program Counter alternate
+extern uint16_t F8_DC0; // Data Counter
+extern uint16_t F8_DC1; // Data Counter alternate
+extern uint8_t F8_ISAR; // Indirect Scratchpad Address Register (6-bit)
+extern uint8_t F8_W; // Status Register (flags)
 extern uint8_t MEMORY_Multicart;
 
 #endif
