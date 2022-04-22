@@ -23,6 +23,7 @@
 #include <file/file_path.h>
 #include <retro_miscellaneous.h>
 #include <retro_endianness.h>
+#include <streams/file_stream.h>
 
 #include "memory.h"
 #include "channelf.h"
@@ -50,8 +51,6 @@
 
 pixel_t frame[frameSize];
 
-char *SystemPath;
-
 struct hle_state_s hle_state;
 
 retro_environment_t Environ;
@@ -61,7 +60,6 @@ retro_audio_sample_t Audio;
 retro_audio_sample_batch_t AudioBatch;
 retro_input_poll_t InputPoll;
 retro_input_state_t InputState;
-struct retro_vfs_interface *vfs_interface;
 
 void retro_set_environment(retro_environment_t fn)
 {
@@ -77,11 +75,11 @@ void retro_set_environment(retro_environment_t fn)
 
 	Environ = fn;
 
-	vfs_interface_info.required_interface_version = 1;
+	vfs_interface_info.required_interface_version = FILESTREAM_REQUIRED_VFS_VERSION;
 	vfs_interface_info.iface = NULL;
 	if (fn(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_interface_info))
 	{
-		vfs_interface = vfs_interface_info.iface;
+		filestream_vfs_init(&vfs_interface_info);
 	}
 
 	fn(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
@@ -96,59 +94,14 @@ static void update_variables(void)
 	hle_state.fast_screen_clear = (Environ(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) && strcmp(var.value, "enabled") == 0;
 }
 
-static int CHANNELF_loadROM_libretro(const char* path, int address)
-{
-	if (vfs_interface != NULL) // load rom using Libretro's vfs interface
-	{
-		struct retro_vfs_file_handle *h = vfs_interface->open(path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_NONE);
-		ssize_t size;
-		if (!h) // problem loading file
-		{
-			return 0;
-		}
-
-		size = vfs_interface->size(h);
-		if (size <= 0) // problem loading file
-		{
-			return 0;
-		}
-		if (size > MEMORY_SIZE - address) // if too large to fit in memory...
-		{
-			size = MEMORY_SIZE - address;
-		}
-
-		size = vfs_interface->read(h, Memory + address, size);
-		vfs_interface->close(h);
-		if (size <= 0) // problem reading file
-		{
-			return 0;
-		}
-
-		if (address+size>MEMORY_RAMStart) 
-		{
-			MEMORY_RAMStart = address+size;
-		}
-
-		return 1;
-	}
-	
-	// If we can't use Libretro's vfs interface to load the rom, do things the old way ... 
-	return CHANNELF_loadROM(path, address);
-}
-
-
 void retro_set_video_refresh(retro_video_refresh_t fn) { Video = fn; }
 void retro_set_audio_sample(retro_audio_sample_t fn) { Audio = fn; }
 void retro_set_audio_sample_batch(retro_audio_sample_batch_t fn) { AudioBatch = fn; }
 void retro_set_input_poll(retro_input_poll_t fn) { InputPoll = fn; }
 void retro_set_input_state(retro_input_state_t fn) { InputState = fn; }
 
-struct retro_game_geometry Geometry;
-
-int joypad0[10]; // joypad 0 state
-int joypad1[10]; // joypad 1 state
-int joypre0[10]; // joypad 0 previous state
-int joypre1[10]; // joypad 1 previous state
+uint8_t joypad0[10]; // joypad 0 state
+uint8_t joypad1[10]; // joypad 1 state
 
 bool console_input = false;
 
@@ -169,7 +122,42 @@ void retro_init(void)
 	char PSU_1_Update_Path[PATH_MAX_LENGTH];
 	char PSU_1_Path[PATH_MAX_LENGTH];
 	char PSU_2_Path[PATH_MAX_LENGTH];
+	char *SystemPath;
 	struct retro_log_callback log;
+	static const struct retro_memory_descriptor mem_descs[] = {
+		/*
+		  Unexposed:
+
+		  Internal registers:
+		  * PC0/PC1
+		  * DC0/DC1
+		  * ISAR
+		  * W
+		  * A
+
+		  Emulator state, invisible to the program:
+		  * CPU_Ticks_Debt
+		  * console input: cursorX, cursorDown, console_input
+		  * ControllerSwapped
+
+		  Write-only state:
+		  * sound: tone, amp
+		  * video: ARM, Color, X, Y
+		  * controllers: ControllerEnabled
+
+		  F2102 indirect access:
+		  * f2102_state, f2102_address, f2102_rw
+
+		  Ports
+
+		  hle_state
+		*/
+		{RETRO_MEMDESC_SYSTEM_RAM, Memory,           0, 0, 0, 0, sizeof(Memory),       "M"},
+		{RETRO_MEMDESC_SYSTEM_RAM, F8_R,             0, 0, 0, 0, sizeof(F8_R),         "R"},
+		{RETRO_MEMDESC_SYSTEM_RAM, f2102_memory,     0, 0, 0, 0, sizeof(f2102_memory), "F"},
+		{RETRO_MEMDESC_VIDEO_RAM,  VIDEO_Buffer_raw, 0, 0, 0, 0, sizeof(VIDEO_Buffer_raw), "V"}
+	};
+	static struct retro_memory_map mem_map = { mem_descs, sizeof(mem_descs) / sizeof(mem_descs[0]) };
 
 	// init buffers, structs
 	memset(frame, 0, frameSize*sizeof(pixel_t));
@@ -189,13 +177,13 @@ void retro_init(void)
 
 	// load PSU 1 Update
 	fill_pathname_join(PSU_1_Update_Path, SystemPath, "sl90025.bin", PATH_MAX_LENGTH);
-	if(!CHANNELF_loadROM_libretro(PSU_1_Update_Path, 0))
+	if(!MEMORY_loadSysROM_libretro(PSU_1_Update_Path, 0))
 	{
 		log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Failed loading Channel F II BIOS(1) from: %s\n", PSU_1_Update_Path);
 		
 		// load PSU 1 Original
 		fill_pathname_join(PSU_1_Path, SystemPath, "sl31253.bin", PATH_MAX_LENGTH);
-		if(!CHANNELF_loadROM_libretro(PSU_1_Path, 0))
+		if(!MEMORY_loadSysROM_libretro(PSU_1_Path, 0))
 		{
 			log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Failed loading Channel F BIOS(1) from: %s\n", PSU_1_Path);
 			log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Switching to HLE for PSU1\n");
@@ -205,7 +193,7 @@ void retro_init(void)
 
 	// load PSU 2
 	fill_pathname_join(PSU_2_Path, SystemPath, "sl31254.bin", PATH_MAX_LENGTH);
-	if(!CHANNELF_loadROM_libretro(PSU_2_Path, 0x400))
+	if(!MEMORY_loadSysROM_libretro(PSU_2_Path, 0x400))
 	{
 		log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Failed loading Channel F BIOS(2) from: %s\n", PSU_2_Path);
 		log_cb(RETRO_LOG_WARN, "[WARN] [FREECHAF] Switching to HLE for PSU2\n");
@@ -219,6 +207,8 @@ void retro_init(void)
 			msg.frames = 600;
 			Environ(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
 	}
+
+	Environ(RETRO_ENVIRONMENT_SET_MEMORY_MAPS, &mem_map);
 }
 
 bool retro_load_game(const struct retro_game_info *info)
@@ -250,7 +240,7 @@ bool retro_load_game(const struct retro_game_info *info)
 	};
 
 	update_variables();
-	if (!CHANNELF_loadROM_mem(info->data, info->size, 0x800))
+	if (!MEMORY_loadCartROM(info->data, info->size))
 		return false;
 
 	Environ(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);
@@ -272,6 +262,9 @@ void retro_run(void)
 	int col;
 
 	bool updated = false;
+	uint8_t joypre0[10]; // joypad 0 previous state
+	uint8_t joypre1[10]; // joypad 1 previous state
+
 	if (Environ(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
 	{
 		update_variables();
@@ -287,33 +280,33 @@ void retro_run(void)
 
 	/* JoyPad 0 */
 
-	joypad0[0] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
-	joypad0[1] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
-	joypad0[2] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
-	joypad0[3] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
+	joypad0[0] = !!InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
+	joypad0[1] = !!InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
+	joypad0[2] = !!InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
+	joypad0[3] = !!InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
 
-	joypad0[4] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-	joypad0[5] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-	joypad0[6] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-	joypad0[7] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
+	joypad0[4] = !!InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
+	joypad0[5] = !!InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
+	joypad0[6] = !!InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
+	joypad0[7] = !!InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
 
-	joypad0[8] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
-	joypad0[9] = InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
+	joypad0[8] = !!InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
+	joypad0[9] = !!InputState(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
 
 	/* JoyPad 1 */
 
-	joypad1[0] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
-	joypad1[1] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
-	joypad1[2] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
-	joypad1[3] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
+	joypad1[0] = !!InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
+	joypad1[1] = !!InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
+	joypad1[2] = !!InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
+	joypad1[3] = !!InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
 
-	joypad1[4] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-	joypad1[5] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-	joypad1[6] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-	joypad1[7] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
+	joypad1[4] = !!InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
+	joypad1[5] = !!InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
+	joypad1[6] = !!InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
+	joypad1[7] = !!InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
 
-	joypad1[8] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
-	joypad1[9] = InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
+	joypad1[8] = !!InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
+	joypad1[9] = !!InputState(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
 
 	// swap console/controller input //
 	if((joypad0[8]==1 && joypre0[8]==0) || (joypad1[8]==1 && joypre1[8]==0))
@@ -482,33 +475,45 @@ void retro_reset(void)
 struct serialized_state
 {
 	unsigned int CPU_Ticks_Debt;
-	unsigned char Memory[MEMORY_SIZE];
-	unsigned char R[R_SIZE]; // 64 byte Scratchpad
-	unsigned char VIDEO_Buffer[8192];
-	unsigned char Ports[64];
+	uint8_t Memory[MEMORY_SIZE];
+	uint8_t F8_R[R_SIZE]; // 64 byte Scratchpad
+	uint8_t VIDEO_Buffer[8192];
+	uint8_t Ports[64];
 
-	unsigned short PC0; // Program Counter
-	unsigned short PC1; // Program Counter alternate
-	unsigned short DC0; // Data Counter
-	unsigned short DC1; // Data Counter alternate
-	unsigned char ISAR; // Indirect Scratchpad Address Register (6-bit)
-	unsigned char W; // Status Register (flags)
+	uint16_t F8_PC0; // Program Counter
+	uint16_t F8_PC1; // Program Counter alternate
+	uint16_t F8_DC0; // Data Counter
+	uint16_t F8_DC1; // Data Counter alternate
+	uint8_t F8_ISAR; // Indirect Scratchpad Address Register (6-bit)
+	uint8_t F8_W; // Status Register (flags)
 
-	unsigned short f2102_state;
-	unsigned char f2102_memory[1024];
-	unsigned short f2102_address;
-	unsigned char f2102_rw;
-	unsigned char A; // Accumulator
+	uint16_t f2102_state;
+	uint8_t f2102_memory[1024];
+	uint16_t f2102_address;
+	uint8_t f2102_rw;
+	uint8_t F8_A; // Accumulator
 
-	unsigned char ARM, X, Y, Color;
-	unsigned char ControllerEnabled;
-	unsigned char ControllerSwapped;
+	uint8_t VIDEO_ARM, VIDEO_X, VIDEO_Y, VIDEO_Color;
+	uint8_t ControllerEnabled;
+	uint8_t ControllerSwapped;
 
-	unsigned char console_input;
-	unsigned char tone;
-	unsigned short amp;
+	uint8_t console_input;
+	uint8_t AUDIO_tone;
+	uint16_t AUDIO_amp;
 
 	struct hle_state_s hle_state;
+
+	unsigned int cursorX;
+	unsigned int cursorDown;
+
+	unsigned int AUDIO_sampleInCycle;
+	unsigned int AUDIO_ticks;
+
+	uint8_t joypad0[10]; // joypad 0 state
+	uint8_t joypad1[10]; // joypad 1 state
+
+	uint8_t CONTROLLER_State[3];
+	uint8_t MEMORY_Multicart;
 };
 
 size_t retro_serialize_size(void)
@@ -519,29 +524,30 @@ size_t retro_serialize_size(void)
 bool retro_serialize(void *data, size_t size)
 {
   	struct serialized_state *st = data;
+	unsigned int i;
 
 	if (size < sizeof (struct serialized_state))
 		return false;
 
 	memcpy(st->Memory, Memory, MEMORY_SIZE);
-	memcpy(st->R, R, R_SIZE);
+	memcpy(st->F8_R, F8_R, R_SIZE);
 	memcpy(st->VIDEO_Buffer, VIDEO_Buffer_raw, sizeof(VIDEO_Buffer_raw));
 	memcpy(st->Ports, Ports, sizeof(Ports));
 	memcpy(st->f2102_memory, f2102_memory, sizeof(f2102_memory));
 
-	st->A = A;
-	st->ISAR = ISAR;
-	st->W = W;
+	st->F8_A = F8_A;
+	st->F8_ISAR = F8_ISAR;
+	st->F8_W = F8_W;
 
-	st->PC0 = retro_cpu_to_be16(PC0);
-	st->PC1 = retro_cpu_to_be16(PC1);
-	st->DC0 = retro_cpu_to_be16(DC0);
-	st->DC1 = retro_cpu_to_be16(DC1);
+	st->F8_PC0 = retro_cpu_to_be16(F8_PC0);
+	st->F8_PC1 = retro_cpu_to_be16(F8_PC1);
+	st->F8_DC0 = retro_cpu_to_be16(F8_DC0);
+	st->F8_DC1 = retro_cpu_to_be16(F8_DC1);
 
-	st->X = X;
-	st->Y = Y;
-	st->Color = Color;
-	st->ARM = ARM;
+	st->VIDEO_X = VIDEO_X;
+	st->VIDEO_Y = VIDEO_Y;
+	st->VIDEO_Color = VIDEO_Color;
+	st->VIDEO_ARM = VIDEO_ARM;
 
 	st->f2102_rw = f2102_rw;
 	st->f2102_address = retro_cpu_to_be16(f2102_address);
@@ -551,10 +557,26 @@ bool retro_serialize(void *data, size_t size)
 	st->ControllerSwapped = ControllerSwapped;
 	st->console_input = console_input;
 
-	st->tone = tone;
-	st->amp = retro_cpu_to_be16(amp);
+	st->AUDIO_tone = AUDIO_tone;
+	st->AUDIO_amp = retro_cpu_to_be16(AUDIO_amp);
+	st->AUDIO_sampleInCycle = retro_cpu_to_be32(AUDIO_sampleInCycle);
+	st->AUDIO_ticks = retro_cpu_to_be32(AUDIO_ticks);
+
 	st->hle_state = hle_state;
 	st->CPU_Ticks_Debt = retro_cpu_to_be32(CPU_Ticks_Debt);
+
+	st->cursorX = retro_cpu_to_be32(cursorX);
+	st->cursorDown = retro_cpu_to_be32(cursorDown);
+
+	for(i=0; i<sizeof(joypad0)/sizeof(joypad0[0]); i++)
+	{
+		st->joypad0[i] = joypad0[i];
+		st->joypad1[i] = joypad1[i];
+	}
+
+	memcpy(st->CONTROLLER_State, CONTROLLER_State, sizeof(st->CONTROLLER_State));
+
+	st->MEMORY_Multicart = MEMORY_Multicart;
 
 	return true;
 }
@@ -563,28 +585,28 @@ bool retro_unserialize(const void *data, size_t size)
 {
   	const struct serialized_state *st = data;
 
-	if (size < sizeof (struct serialized_state))
+	if (size < sizeof (struct serialized_state) - 40)
 		return false;
 
 	memcpy (Memory, st->Memory, MEMORY_SIZE);
-	memcpy (R, st->R, R_SIZE);
+	memcpy (F8_R, st->F8_R, R_SIZE);
 	memcpy (VIDEO_Buffer_raw, st->VIDEO_Buffer, sizeof(VIDEO_Buffer_raw));
 	memcpy (Ports, st->Ports, sizeof(Ports));
 	memcpy (f2102_memory, st->f2102_memory, sizeof(f2102_memory));
 
-	A = st->A;
-	ISAR = st->ISAR;
-	W = st->W;
+	F8_A = st->F8_A;
+	F8_ISAR = st->F8_ISAR;
+	F8_W = st->F8_W;
 
-	PC0 = retro_be_to_cpu16(st->PC0);
-	PC1 = retro_be_to_cpu16(st->PC1);
-	DC0 = retro_be_to_cpu16(st->DC0);
-	DC1 = retro_be_to_cpu16(st->DC1);
+	F8_PC0 = retro_be_to_cpu16(st->F8_PC0);
+	F8_PC1 = retro_be_to_cpu16(st->F8_PC1);
+	F8_DC0 = retro_be_to_cpu16(st->F8_DC0);
+	F8_DC1 = retro_be_to_cpu16(st->F8_DC1);
 
-	X = st->X;
-	Y = st->Y;
-	Color = st->Color;
-	ARM = st->ARM;
+	VIDEO_X = st->VIDEO_X;
+	VIDEO_Y = st->VIDEO_Y;
+	VIDEO_Color = st->VIDEO_Color;
+	VIDEO_ARM = st->VIDEO_ARM;
 
 	f2102_rw = st->f2102_rw;
 	f2102_address = retro_be_to_cpu16(st->f2102_address);
@@ -596,9 +618,30 @@ bool retro_unserialize(const void *data, size_t size)
 	console_input = st->console_input;
 	hle_state = st->hle_state;
 
-	tone = st->tone;
-	amp = retro_be_to_cpu16(st->amp);
+	AUDIO_tone = st->AUDIO_tone;
+	AUDIO_amp = retro_be_to_cpu16(st->AUDIO_amp);
 	CPU_Ticks_Debt = retro_be_to_cpu32(st->CPU_Ticks_Debt);
+
+	if (size >= sizeof (struct serialized_state))
+	{
+		unsigned i;
+
+		cursorX = retro_be_to_cpu16(st->cursorX);
+		cursorDown = retro_be_to_cpu16(st->cursorDown);
+
+		AUDIO_sampleInCycle = retro_be_to_cpu32(st->AUDIO_sampleInCycle);
+		AUDIO_ticks = retro_be_to_cpu32(st->AUDIO_ticks);
+
+		for(i=0; i<sizeof(joypad0)/sizeof(joypad0[0]); i++)
+		{
+			joypad0[i] = st->joypad0[i];
+			joypad1[i] = st->joypad1[i];
+		}
+
+		memcpy(CONTROLLER_State, st->CONTROLLER_State, sizeof(st->CONTROLLER_State));
+
+		MEMORY_Multicart = st->MEMORY_Multicart;
+	}
 
 	return true;
 }
@@ -608,10 +651,10 @@ size_t retro_get_memory_size(unsigned id)
 	switch(id)
 	{
 		case RETRO_MEMORY_SYSTEM_RAM: // System Memory
-			return 0x10000; //65536
+			return R_SIZE;
 	
 		case RETRO_MEMORY_VIDEO_RAM: // Video Memory
-			return 0x2000; //8192
+			return sizeof(VIDEO_Buffer_raw); //8192
 
 		//case RETRO_MEMORY_SAVE_RAM: // SRAM / Regular save RAM
 		//case RETRO_MEMORY_RTC: // Real-time clock value  
@@ -624,7 +667,7 @@ void *retro_get_memory_data(unsigned id)
 	switch(id)
 	{
 		case RETRO_MEMORY_SYSTEM_RAM: // System Memory
-			return Memory;
+			return F8_R;
 	
 		case RETRO_MEMORY_VIDEO_RAM: // Video Memory
 			return VIDEO_Buffer_raw;

@@ -17,9 +17,13 @@
 	along with FreeChaF.  If not, see http://www.gnu.org/licenses/
 */
 
-extern short AUDIO_Buffer[735 * 2];
-extern unsigned char tone;
-extern short amp;
+#include <stdint.h>
+
+extern int16_t AUDIO_Buffer[735 * 2];
+extern uint8_t AUDIO_tone;
+extern int16_t AUDIO_amp;
+extern unsigned int AUDIO_sampleInCycle;
+extern unsigned int AUDIO_ticks;
 
 void AUDIO_tick(int ticks);
 
@@ -27,6 +31,6 @@ void AUDIO_frame(void);
 
 void AUDIO_reset(void);
 
-void AUDIO_portReceive(int port, unsigned char val);
+void AUDIO_portReceive(uint8_t port, uint8_t val);
 
 #endif

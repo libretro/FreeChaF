@@ -22,10 +22,6 @@ extern retro_log_printf_t log_cb;
 
 extern int CPU_Ticks_Debt;
 
-int CHANNELF_loadROM(const char* path, int address);
-
-int CHANNELF_loadROM_mem(const unsigned char* data, int sz, int address);
-
 void CHANNELF_run(void);
 
 void CHANNELF_init(void);

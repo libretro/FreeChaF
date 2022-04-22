@@ -42,7 +42,7 @@ void unsupported_hle_function(void)
 	char formatted[1024];
 	struct retro_message msg;
 	memset(formatted, 0, sizeof(formatted));
-	any_snprintf(formatted, 1000, "Unsupported HLE function: 0x%x\n", PC0);
+	any_snprintf(formatted, 1000, "Unsupported HLE function: 0x%x\n", F8_PC0);
 	log_cb(RETRO_LOG_ERROR, formatted);
 	msg.msg    = formatted;
 	msg.frames = 600;
@@ -69,17 +69,17 @@ static int CHANNELF_HLE(void)
 		}
 		return TICKS_PER_ROW;
 	}
-	switch (PC0)
+	switch (F8_PC0)
 	{
 	case 0x0: // init
-		memset (R, 0, sizeof(R));
-		if (Memory[0x800] == 0x55)
+		memset (F8_R, 0, sizeof(F8_R));
+		if (MEMORY_read8(0x800) == 0x55)
 		{
-			A = 0x55;
-			DC0 = 0x801;
-			PC0 = 0x802;
-			R[0x3b] = 0x28;
-			ISAR = 0x3b;
+			F8_A = 0x55;
+			F8_DC0 = 0x801;
+			F8_PC0 = 0x802;
+			F8_R[0x3b] = 0x28;
+			F8_ISAR = 0x3b;
 			return 1459;
 		}
 
@@ -87,17 +87,17 @@ static int CHANNELF_HLE(void)
 		return 14914;
 	case 0x8f: // delay
 	{
-		int ticks = 2563 * R[5];
-		R[5] = 0;
-		R[6] = 0;
-		A = 0xff;
-		PC0 = PC1;
+		int ticks = 2563 * F8_R[5];
+		F8_R[5] = 0;
+		F8_R[6] = 0;
+		F8_A = 0xff;
+		F8_PC0 = F8_PC1;
 		return ticks;
 	}
 	case 0xd0: // screen clear
 	{
 		// guesswork
-		switch (R[3])
+		switch (F8_R[3])
 		{
 		case 0xd0:
 		case 0xc6:
@@ -113,7 +113,7 @@ static int CHANNELF_HLE(void)
 			return TICKS_PER_FRAME;
 		}
 
-		PC0 = PC1;
+		F8_PC0 = F8_PC1;
 
 		if (hle_state.fast_screen_clear)
 		{
@@ -130,32 +130,32 @@ static int CHANNELF_HLE(void)
 	}
 	case 0x107: // pushk
 	{
-		int tisar = R[0x3b];
-		R[tisar & 0x3f] = R[12];
-		R[(tisar + 1) & 0x3f] = R[13];
-		R[0x3b] = (tisar + 2) & 0x3f;
+		int tisar = F8_R[0x3b];
+		F8_R[tisar & 0x3f] = F8_R[12];
+		F8_R[(tisar + 1) & 0x3f] = F8_R[13];
+		F8_R[0x3b] = (tisar + 2) & 0x3f;
 
 		// Simulate clobbering
-		A = ISAR;
-		R[7] = ISAR;
+		F8_A = F8_ISAR;
+		F8_R[7] = F8_ISAR;
 
 		// Return
-		PC0 = PC1;
+		F8_PC0 = F8_PC1;
 		return 48;
 	}
 	case 0x11e: // popk
 	{
-		int tisar = R[0x3b];
-		R[13] = R[(tisar - 1) & 0x3f];
-		R[12] = R[(tisar - 2) & 0x3f];
-		R[0x3b] = (tisar - 2) & 0x3f;
+		int tisar = F8_R[0x3b];
+		F8_R[13] = F8_R[(tisar - 1) & 0x3f];
+		F8_R[12] = F8_R[(tisar - 2) & 0x3f];
+		F8_R[0x3b] = (tisar - 2) & 0x3f;
 
 		// Simulate clobbering
-		A = ISAR;
-		R[7] = ISAR;
+		F8_A = F8_ISAR;
+		F8_R[7] = F8_ISAR;
 
 		// Return
-		PC0 = PC1;
+		F8_PC0 = F8_PC1;
 		return 50;
 	}
 	default:
@@ -169,15 +169,15 @@ static int is_hle(void)
 	if (hle_state.screen_clear_row)
 		return 1;
 
-	if (PC0 < 0x400 && hle_state.psu1_hle)
+	if (F8_PC0 < 0x400 && hle_state.psu1_hle)
 		return 1;
 
-	if (PC0 >= 0x400 && PC0 < 0x800 && hle_state.psu2_hle)
+	if (F8_PC0 >= 0x400 && F8_PC0 < 0x800 && hle_state.psu2_hle)
 	{
 		return 1;
 	}
 
-	if (PC0 == 0xd0 && hle_state.fast_screen_clear && (R[3] == 0xc6 || R[3] == 0x21 || R[3] == 0xd0))
+	if (F8_PC0 == 0xd0 && hle_state.fast_screen_clear && (F8_R[3] == 0xc6 || F8_R[3] == 0x21 || F8_R[3] == 0xd0))
 	{
 		return 1;
 	}

@@ -86,7 +86,7 @@ void OSD_FillBox(int x1, int y1, int width, int height)
 		OSD_HLine(x1, y1+i, width);
 }
 
-int letters[590] = // 32 - 90 59x10
+static const int letters[590] = // 32 - 90 59x10
 {
 	0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0, 0,  // space
 	0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0, 0,  // !

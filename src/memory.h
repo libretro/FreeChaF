@@ -1,5 +1,8 @@
 #ifndef MEMORY_H
 #define MEMORY_H
+
+#include <stdint.h>
+
 /*
 	This file is part of FreeChaF.
 
@@ -20,23 +23,29 @@
 extern int MEMORY_RAMStart;
 
 #define MEMORY_SIZE 0x10000
-extern unsigned char Memory[MEMORY_SIZE];
+extern uint8_t Memory[MEMORY_SIZE];
 // sl131253 - 0x000 - 0x3FF
 // sl131254 - 0x400 - 0x7FF
 // cart     - 0x800 - 0x1FFF
 // vram     - 0x2000 ...
 
 void MEMORY_reset(void);
+int MEMORY_loadCartROM(const void* data, size_t size);
+int MEMORY_loadSysROM_libretro(const char* path, int address);
+uint8_t MEMORY_read8(uint16_t address);
+uint16_t MEMORY_read16(uint16_t address);
+void MEMORY_write8(uint16_t address, uint8_t val);
 
 #define R_SIZE 64
-extern unsigned char R[R_SIZE]; // 64 byte Scratchpad
+extern uint8_t F8_R[R_SIZE]; // 64 byte Scratchpad
 
-extern unsigned char A; // Accumulator
-extern unsigned short PC0; // Program Counter
-extern unsigned short PC1; // Program Counter alternate
-extern unsigned short DC0; // Data Counter
-extern unsigned short DC1; // Data Counter alternate
-extern unsigned char ISAR; // Indirect Scratchpad Address Register (6-bit)
-extern unsigned char W; // Status Register (flags)
+extern uint8_t F8_A; // Accumulator
+extern uint16_t F8_PC0; // Program Counter
+extern uint16_t F8_PC1; // Program Counter alternate
+extern uint16_t F8_DC0; // Data Counter
+extern uint16_t F8_DC1; // Data Counter alternate
+extern uint8_t F8_ISAR; // Indirect Scratchpad Address Register (6-bit)
+extern uint8_t F8_W; // Status Register (flags)
+extern uint8_t MEMORY_Multicart;
 
 #endif

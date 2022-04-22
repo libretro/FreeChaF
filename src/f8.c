@@ -20,21 +20,23 @@
 // http://channelf.se/veswiki/index.php?title=Main_Page
 // http://seanriddle.com/chanfinfo.html
 
+#include <string.h>
+
 #include "f8.h"
 #include "memory.h"
 #include "ports.h"
 
-unsigned char R[64]; // 64 byte Scratchpad
+uint8_t F8_R[64]; // 64 byte Scratchpad
 
-unsigned char A   = 0; // Accumulator
-unsigned short PC0 = 0; // Program Counter
-unsigned short PC1 = 0; // Program Counter alternate
-unsigned short DC0 = 0; // Data Counter
-unsigned short DC1 = 0; // Data Counter alternate
-unsigned char ISAR = 0; // Indirect Scratchpad Address Register (6-bit)
-unsigned char W   = 0; // Status Register (flags)
+uint8_t F8_A   = 0; // Accumulator
+uint16_t F8_PC0 = 0; // Program Counter
+uint16_t F8_PC1 = 0; // Program Counter alternate
+uint16_t F8_DC0 = 0; // Data Counter
+uint16_t F8_DC1 = 0; // Data Counter alternate
+uint8_t F8_ISAR = 0; // Indirect Scratchpad Address Register (6-bit)
+uint8_t F8_W   = 0; // Status Register (flags)
 
-int (*OpCodes[0x100])(int);
+int (*OpCodes[0x100])(uint8_t);
 
 // Flags
 enum
@@ -54,30 +56,29 @@ enum
 
 
 // Read 1-byte instruction operand
-int readOperand8(void)
+uint8_t readOperand8(void)
 {
-	PC0++;
-	return Memory[PC0-1];
+	return MEMORY_read8(F8_PC0++);
 }
 // Read 2-byte instruction operand
-int readOperand16(void)
+uint16_t readOperand16(void)
 {
-	int val = (Memory[PC0]<<8) | Memory[PC0+1];
-	PC0+=2;
+	uint16_t val = MEMORY_read16(F8_PC0);
+	F8_PC0+=2;
 	return val;
 }
 
 // Set specific flag
 void setFlag(int flag, int val)
 {
-	W = W | 1<<flag;
-	W = W ^ 1<<flag;
-	W = W | (val>0)<<flag;
-	W ^= (flag==0); // Compliment sign flag (1-positive, 0-negative)
+	F8_W = F8_W | 1<<flag;
+	F8_W = F8_W ^ 1<<flag;
+	F8_W = F8_W | (val>0)<<flag;
+	F8_W ^= (flag==0); // Compliment sign flag (1-positive, 0-negative)
 }
 
 // Set zero and sign flags based on val, clear overflow and carry 
-void setFlags_0z0s(int val) // O Z C S
+void setFlags_0z0s(uint8_t val) // O Z C S
 {
 	setFlag(flag_Overflow, 0);
 	setFlag(flag_Zero, (val==0));
@@ -98,60 +99,54 @@ void clearFlags_ozcs(void)
 // affects just lower three bits, which roll-over 
 void incISAR(void)
 {
-	ISAR = (ISAR&0x38) | ((ISAR+1)&0x7);
+	F8_ISAR = (F8_ISAR&0x38) | ((F8_ISAR+1)&0x7);
 }
 
 // Decrement Indirect Scratchpad Address Register
 // affects just lower three bits, which roll-over
 void decISAR(void)
 {
-	ISAR = (ISAR&0x38) | ((ISAR-1)&0x7);
-}
-
-// Increment Primary Data Counter
-void incDC0(void)
-{
-	DC0 = (DC0+1) & 0xFFFF;
+	F8_ISAR = (F8_ISAR&0x38) | ((F8_ISAR-1)&0x7);
 }
 
 // Read Scratchpad Byte
-int Read8(int reg)
+uint8_t Read8(uint8_t reg)
 {
-	return (R[reg & 0x3F]) & 0xFF;
+	return F8_R[reg & 0x3F];
 }
 // Read 16-bit int from Scratchpad
-int Read16(int reg)
+uint16_t Read16(uint8_t reg)
 {
-	return ((R[reg&0x3F]<<8) | R[(reg+1)&0x3F]) & 0xFFFF;
+	return (F8_R[reg&0x3F]<<8) | F8_R[(reg+1)&0x3F];
 }
 // Write 16-bit int to Scratchpad
-void Store16(int reg, int val)
+void Store16(uint8_t reg, uint16_t val)
 {
-	R[reg&0x3F] = (val>>8) & 0xFF;
-	R[(reg+1)&0x3F]=val & 0xFF;
+	F8_R[reg&0x3F] = val>>8;
+	F8_R[(reg+1)&0x3F] = val;
 }
 
 // Add two 8-bit signed ints
-int Add8(int a, int b)
+uint8_t Add8(uint8_t a, uint8_t b)
 {
-	int signa = a & 0x80;
-	int signb = b & 0x80;
-	int result = a + b;
-	int signr = result & 0x80;
+	uint8_t signa = a & 0x80;
+	uint8_t signb = b & 0x80;
+	uint16_t result = (uint16_t) a + (uint16_t) b;
+	uint8_t signr = result & 0x80;
 
 	setFlag(flag_Sign, (result & 0x80)>0);
 	setFlag(flag_Zero, ((result & 0xFF)==0));
 	setFlag(flag_Overflow, (signa==signb && signa!=signr)); 
 	setFlag(flag_Carry, (result & 0x100)>0);
-	return result & 0xFF;
+	return result;
 }
 
 // Add two 8-bit BCD numbers
-int AddBCD(int a, int b)
+uint8_t AddBCD(uint8_t a, uint8_t b)
 {
 	// Method from 6-3 of the Fairchild F8 Guide to Programming
 	// assume a = (a + 0x66) & 0xFF
-	int sum = a + b;
+	uint16_t sum = (uint16_t) a + (uint16_t) b;
 
 	int ci = ((a&0xF)+(b&0xF))>0xF; // carry intermediate
 	int cu = sum>=0x100; // carry upper
@@ -161,53 +156,53 @@ int AddBCD(int a, int b)
 	if(ci==0) { sum = (sum&0xF0) | ((sum+0xA)&0xF); }
 	if(cu==0) { sum = (sum+0xA0); }
 
-	return sum & 0xFF;
+	return sum;
 }
 
 // Subtract two 8-bit signed ints
-int Sub8(int a, int b)
+uint8_t Sub8(uint8_t a, uint8_t b)
 {
 	b = ((b ^ 0xFF) + 1);
 	return Add8(a, b); 
 }
 
 // Bitwise And, sets flags
-int And8(int a, int b)
+uint8_t And8(uint8_t a, uint8_t b)
 {
 	a = a & b;
 	setFlags_0z0s(a);
-	return a & 0xFF;
+	return a;
 }
 // Bitwise Or, sets flags
-int Or8(int a, int b)
+uint8_t Or8(uint8_t a, uint8_t b)
 {
 	a = a | b;
 	setFlags_0z0s(a);
-	return a & 0xFF;
+	return a;
 }
 // Bitwise Xor, sets flags
-int Xor8(int a, int b)
+uint8_t Xor8(uint8_t a, uint8_t b)
 {
-	a = (a ^ b) & 0xFF;
+	a = (a ^ b);
 	setFlags_0z0s(a);
-	return a & 0xFF;
+	return a;
 }
 // Logical Shift Right, sets flags
-int ShiftRight(int val, int dist)
+uint8_t ShiftRight(uint8_t val, int dist)
 {
-	val = (val >> dist)  & 0xFF;
+	val = (val >> dist);
 	setFlags_0z0s(val);
 	return val;
 }
 // Logical Shift Left, sets flags
-int ShiftLeft(int val, int dist)
+uint8_t ShiftLeft(uint8_t val, int dist)
 {
-	val = (val << dist) & 0xFF;
+	val = (val << dist);
 	setFlags_0z0s(val);
-	return val & 0xFF;
+	return val;
 }
 // Computes relative branch offset
-int calcBranch(int n)
+int calcBranch(uint8_t n)
 {
 	if((n&0x80)==0) { return(n-1); } // forward
 	return -(((n-1)^0xFF)+1); // backward
@@ -220,621 +215,606 @@ int calcBranch(int n)
    *
    ***************************** */
 
-int LR_A_Ku(int v) // 00 LR A, Ku : A <- R12
+int LR_A_Ku(uint8_t v) // 00 LR A, Ku : A <- R12
 {
-	A = R[12];
+	F8_A = F8_R[12];
 	return 2;
 }
 
-int LR_A_Kl(int v) // 01 LR A, Kl : A <- R13
+int LR_A_Kl(uint8_t v) // 01 LR A, Kl : A <- R13
 {
-	A = R[13];
+	F8_A = F8_R[13];
 	return 2;
 }
 
-int LR_A_Qu(int v) // 02 LR A, Qu : A <- R14
+int LR_A_Qu(uint8_t v) // 02 LR A, Qu : A <- R14
 {
-	A = R[14];
+	F8_A = F8_R[14];
 	return 2;
 }
 
-int LR_A_Ql(int v) // 03 LR A, Ql : A <- R15 
+int LR_A_Ql(uint8_t v) // 03 LR A, Ql : A <- R15 
 {
-	A = R[15];
+	F8_A = F8_R[15];
 	return 2;
 } 
 
-int LR_Ku_A(int v) // 04 LR Ku, A : R12 <- A 
+int LR_Ku_A(uint8_t v) // 04 LR Ku, A : R12 <- A 
 {
-	R[12] = A;
+	F8_R[12] = F8_A;
 	return 2;
 }
 
-int LR_Kl_A(int v) // 05 LR Kl, A : R13 <- A 
+int LR_Kl_A(uint8_t v) // 05 LR Kl, A : R13 <- A 
 {
-	R[13] = A;
+	F8_R[13] = F8_A;
 	return 2;
 } 
 
-int LR_Qu_A(int v) // 06 LR Qu, A : R14 <- A
+int LR_Qu_A(uint8_t v) // 06 LR Qu, A : R14 <- A
 {
-	R[14] = A;
+	F8_R[14] = F8_A;
 	return 2;
 } 
 
-int LR_Ql_A(int v) // 07 LR Ql, A : R15 <- A 
+int LR_Ql_A(uint8_t v) // 07 LR Ql, A : R15 <- A 
 {
-	R[15] = A;
+	F8_R[15] = F8_A;
 	return 2;
 } 
 
-int LR_K_P(int v) // 08 LR K, P  : R12 <- PC1U, R13 <- PC1L
+int LR_K_P(uint8_t v) // 08 LR K, P  : R12 <- PC1U, R13 <- PC1L
 {
-	Store16(12, PC1);
+	Store16(12, F8_PC1);
 	return 8;
 }
 
-int LR_P_K(int v)  // 09 LR P, K  : PC1U <- R12, PC1L <- R13
+int LR_P_K(uint8_t v)  // 09 LR P, K  : PC1U <- R12, PC1L <- R13
 {
-	PC1 = Read16(12);
+	F8_PC1 = Read16(12);
 	return 8;
 } 
 
-int LR_A_IS(int v) // 0A LR A, IS : A <- ISAR 
+int LR_A_IS(uint8_t v) // 0A LR A, IS : A <- ISAR 
 {
-	A = ISAR;
+	F8_A = F8_ISAR;
 	return 2;
 }
 
-int LR_IS_A(int v) // 0B LR IS, A : ISAR <- A
+int LR_IS_A(uint8_t v) // 0B LR IS, A : ISAR <- A
 {
-	ISAR = A & 0x3F;
+	F8_ISAR = F8_A & 0x3F;
 	return 2;
 }
 
-int PK(int v) // 0C PK PC1 <- PC0, PC0U <- R12, PC0L <- R13
+int PK(uint8_t v) // 0C PK PC1 <- PC0, PC0U <- R12, PC0L <- R13
 {
-	PC1 = PC0;
-	PC0 = Read16(12);
+	F8_PC1 = F8_PC0;
+	F8_PC0 = Read16(12);
 	return 5;
 }
 
-int LR_P0_Q(int v) // 0D LR P0, Q : PC0L <- R15, PC0U <- R14
+int LR_P0_Q(uint8_t v) // 0D LR P0, Q : PC0L <- R15, PC0U <- R14
 {
-	PC0 = Read16(14);
+	F8_PC0 = Read16(14);
 	return 8;
 }
 
-int LR_Q_DC(int v) // 0E LR Q, DC : R14 <- DC0U, R15 <- DC0L 
+int LR_Q_DC(uint8_t v) // 0E LR Q, DC : R14 <- DC0U, R15 <- DC0L 
 {
-	Store16(14, DC0);
+	Store16(14, F8_DC0);
 	return 8;
 }
 
-int LR_DC_Q(int v) // 0F LR DC, Q : DC0U <- R14, DC0L <- R15
+int LR_DC_Q(uint8_t v) // 0F LR DC, Q : DC0U <- R14, DC0L <- R15
 {
-	DC0 = Read16(14);
+	F8_DC0 = Read16(14);
 	return 8;
 }
 
-int LR_DC_H(int v) // 10 LR DC, H : DC0U <- R10, DC0L <- R11 
+int LR_DC_H(uint8_t v) // 10 LR DC, H : DC0U <- R10, DC0L <- R11 
 {
-	DC0 = Read16(10);
+	F8_DC0 = Read16(10);
 	return 8; 
 }
 
-int LR_H_DC(int v) // 11 LR H, DC : R10 <- DC0U, R11 <- DC0L
+int LR_H_DC(uint8_t v) // 11 LR H, DC : R10 <- DC0U, R11 <- DC0L
 {
-	Store16(10, DC0);
+	Store16(10, F8_DC0);
 	return 8;
 } 
 
-int SR_1(int v) // 12 SR 1 : A >> 1
+int SR_1(uint8_t v) // 12 SR 1 : A >> 1
 {
-	A = ShiftRight(A, 1);
+	F8_A = ShiftRight(F8_A, 1);
 	return 2;
 } 
 
-int SL_1(int v) // 13 SL 1 : A << 1
+int SL_1(uint8_t v) // 13 SL 1 : A << 1
 {
-	A = ShiftLeft(A, 1);
+	F8_A = ShiftLeft(F8_A, 1);
 	return 2;
 } 
 
-int SR_4(int v) // 14 SR 4 : A >> 4
+int SR_4(uint8_t v) // 14 SR 4 : A >> 4
 {
-	A = ShiftRight(A, 4);
+	F8_A = ShiftRight(F8_A, 4);
 	return 2;
 }
 
-int SL_4(int v) // 15 SL 4 : A << 4
+int SL_4(uint8_t v) // 15 SL 4 : A << 4
 { 
-	A = ShiftLeft(A, 4);
+	F8_A = ShiftLeft(F8_A, 4);
 	return 2;
 } 
 
-int LM(int v) // 16 LM A <- (DC0), DC0 <- DC0 + 1
+int LM(uint8_t v) // 16 LM A <- (DC0), DC0 <- DC0 + 1
 {
-	A = Memory[DC0];
-	DC0 = (DC0+1) & 0xFFFF;
+	F8_A = MEMORY_read8(F8_DC0++);
 	return 5;
 } 
 
-int ST(int v) // 17 ST (DC0) <- A, DC0 <- DC0 + 1 
+int ST(uint8_t v) // 17 ST (DC0) <- A, DC0 <- DC0 + 1 
 {
-	Memory[DC0] = A;
-	DC0 = (DC0+1) & 0xFFFF;
+	MEMORY_write8(F8_DC0++, F8_A);
 	return 5;
 }        
 
-int COM(int v) // 18 COM A : A <- A XOR 0xFF                
+int COM(uint8_t v) // 18 COM A : A <- A XOR 0xFF                
 {
-	A = A ^ 0xFF;
-	setFlags_0z0s(A);
+	F8_A = F8_A ^ 0xFF;
+	setFlags_0z0s(F8_A);
 	return 2;
 }
 
-int LNK(int v) // 19 LNK : A <- A + C                       
+int LNK(uint8_t v) // 19 LNK : A <- A + C                       
 {
-	A = Add8(A, (W>>flag_Carry)&1);
+	F8_A = Add8(F8_A, (F8_W>>flag_Carry)&1);
 	return 2;
 }
 
-int DI(int v) // 1A DI : Disable Interupts                 
+int DI(uint8_t v) // 1A DI : Disable Interupts                 
 {
 	setFlag(flag_Interupt, 0);
 	return 2; 
 }
 
-int EI(int v) // 1B EI : Enable Interupts                  
+int EI(uint8_t v) // 1B EI : Enable Interupts                  
 {
 	setFlag(flag_Interupt, 1);
 	return 2;
 }
 
-int POP(int v) // 1C POP : PC0 <- PC1                       
+int POP(uint8_t v) // 1C POP : PC0 <- PC1                       
 {
-	PC0 = PC1;
+	F8_PC0 = F8_PC1;
 	return 4;
 }
 
-int LR_W_J(int v) // 1D LR W, J : W <- R9                      
+int LR_W_J(uint8_t v) // 1D LR W, J : W <- R9                      
 { 
-	W = R[9];
+	F8_W = F8_R[9];
 	return 2;
 }
 
-int LR_J_W(int v) // 1E LR J, W : R9 <- W                      
+int LR_J_W(uint8_t v) // 1E LR J, W : R9 <- W                      
 {
-	R[9] = W;
+	F8_R[9] = F8_W;
 	return 4;
 }
 
-int INC(int v) // 1F INC : A <- A + 1                       
+int INC(uint8_t v) // 1F INC : A <- A + 1                       
 {
-	A = Add8(A, 1);
+	F8_A = Add8(F8_A, 1);
 	return 2;
 } 
 
-int LI_n(int v) // 20 LI n : A <- n                          
+int LI_n(uint8_t v) // 20 LI n : A <- n                          
 {
-	A = readOperand8();
+	F8_A = readOperand8();
 	return 5; 
 } 
 
-int NI_n(int v) // 21 NI n : A <- A AND n                    
+int NI_n(uint8_t v) // 21 NI n : A <- A AND n                    
 {
-	A = And8(A, readOperand8());
+	F8_A = And8(F8_A, readOperand8());
 	return 5;
 } 
 
-int OI_n(int v) // 22 OI n : A <- A OR n                     
+int OI_n(uint8_t v) // 22 OI n : A <- A OR n                     
 {
-	A = Or8(A, readOperand8());
+	F8_A = Or8(F8_A, readOperand8());
 	return 5;
 } 
 
-int XI_n(int v)   // 23 XI n : A <- A XOR n                    
+int XI_n(uint8_t v)   // 23 XI n : A <- A XOR n                    
 {
-	A = Xor8(A, readOperand8());
+	F8_A = Xor8(F8_A, readOperand8());
 	return 5;
 } 
 
-int AI_n(int v)   // 24 AI n : A <- A + n                      
+int AI_n(uint8_t v)   // 24 AI n : A <- A + n                      
 {
-	A = Add8(A, readOperand8());
+	F8_A = Add8(F8_A, readOperand8());
 	return 5;
 }
 
-int CI_n(int v)   // 25 CI n : n+!(A)+1 (n-A), Only set status 
+int CI_n(uint8_t v)   // 25 CI n : n+!(A)+1 (n-A), Only set status 
 {
-	Sub8(readOperand8(), A);
+	Sub8(readOperand8(), F8_A);
 	return 5;
 } 
 
-int IN_n(int v) // 26 IN n : Data Bus <- Port n, A <- Port n
+int IN_n(uint8_t v) // 26 IN n : Data Bus <- Port n, A <- Port n
 { 
-	A = PORTS_read(readOperand8());
-	setFlags_0z0s(A);
+	F8_A = PORTS_read(readOperand8());
+	setFlags_0z0s(F8_A);
 	return 8;
 } 
 
-int OUT_n(int v) // 27 OUT n : Data Bus <- Port n, Port n <- A
+int OUT_n(uint8_t v) // 27 OUT n : Data Bus <- Port n, Port n <- A
 {
-	PORTS_notify(readOperand8(), A);
+	PORTS_notify(readOperand8(), F8_A);
 	return 8;
 } 
 
-int PI_mn(int v) // 28 PI mn : A <- m, PC1 <- PC0+1, PC0L <- n, PC0U <- A 
+int PI_mn(uint8_t v) // 28 PI mn : A <- m, PC1 <- PC0+1, PC0L <- n, PC0U <- A 
 { 
-	A = readOperand8();   // A <- m
-	PC1 = PC0+1;          // PC1 <- PC0+1
-	PC0 = readOperand8(); // PC0L <- n
-	PC0 = PC0 | (A<<8);   // PC0U <- A
+	F8_A = readOperand8();   // A <- m
+	F8_PC1 = F8_PC0+1;          // PC1 <- PC0+1
+	F8_PC0 = readOperand8(); // PC0L <- n
+	F8_PC0 = F8_PC0 | (F8_A<<8);   // PC0U <- A
 	return 13;
 } 
 
-int JMP_mn(int v) // 29 JMP mn : A <- m, PC0L <- n, PC0U <- A 
+int JMP_mn(uint8_t v) // 29 JMP mn : A <- m, PC0L <- n, PC0U <- A 
 {
-	A = readOperand8(); // A <- m
-	PC0=readOperand8(); // PC0L <- n
-	PC0 |= (A<<8);      // PC0U <- A
+	F8_A = readOperand8(); // A <- m
+	F8_PC0=readOperand8(); // PC0L <- n
+	F8_PC0 |= (F8_A<<8);      // PC0U <- A
 	return 11;
 }
 
-int DCI_mn(int v) // 2A DCI mn : DC0U <- m, PC0++, DC0L <- n, PC0++ 
+int DCI_mn(uint8_t v) // 2A DCI mn : DC0U <- m, PC0++, DC0L <- n, PC0++ 
 {
-	DC0=readOperand16();
+	F8_DC0=readOperand16();
 	return 12;
 } 
 
-int NOP(int v) // 2B NOP
+int NOP(uint8_t v) // 2B NOP
 {
 	return 2;
 } 
 
-int XDC(int v) // 2C DC0,DC1 <- DC1,DC0 
+int XDC(uint8_t v) // 2C DC0,DC1 <- DC1,DC0 
 {
-	DC0^=DC1;
-	DC1^=DC0;
-	DC0^=DC1;
+	F8_DC0^=F8_DC1;
+	F8_DC1^=F8_DC0;
+	F8_DC0^=F8_DC1;
 	return 4;
 }
 
-int DS_r(int v) // 3x DS r <- (r)+0xFF, [decrease scratchpad byte]
+int DS_r(uint8_t v) // 3x DS r <- (r)+0xFF, [decrease scratchpad byte]
 {
-	R[v&0xF] = Sub8(R[v&0xF], 1);
+	F8_R[v&0xF] = Sub8(F8_R[v&0xF], 1);
 	return 3;
 } 
-int DS_r_S(int v) // DS r Indirect
+int DS_r_S(uint8_t v) // DS r Indirect
 {
-	R[ISAR] = Sub8(R[ISAR], 1);
+	F8_R[F8_ISAR] = Sub8(F8_R[F8_ISAR], 1);
 	return 3;
 }
-int DS_r_I(int v) // DS r Increment
+int DS_r_I(uint8_t v) // DS r Increment
 {
-	R[ISAR] = Sub8(R[ISAR], 1);
+	F8_R[F8_ISAR] = Sub8(F8_R[F8_ISAR], 1);
 	incISAR();
 	return 3;
 }
-int DS_r_D(int v) // DS r Decrement
+int DS_r_D(uint8_t v) // DS r Decrement
 {
-	R[ISAR] = Sub8(R[ISAR], 1);
+	F8_R[F8_ISAR] = Sub8(F8_R[F8_ISAR], 1);
 	decISAR();
 	return 3;
 }
 
-int LR_A_r(int v) // 4x LR A, r : A <- r 
+int LR_A_r(uint8_t v) // 4x LR A, r : A <- r 
 {
-	A = R[v&0xF];
+	F8_A = F8_R[v&0xF];
 	return 2;
 } 
-int LR_A_r_S(int v) // LR A, r Indirect
+int LR_A_r_S(uint8_t v) // LR A, r Indirect
 {
-	A = R[ISAR];
+	F8_A = F8_R[F8_ISAR];
 	return 2;
 }
-int LR_A_r_I(int v) // LR A, r Increment
+int LR_A_r_I(uint8_t v) // LR A, r Increment
 {
-	A = R[ISAR];
+	F8_A = F8_R[F8_ISAR];
 	incISAR();
 	return 2;
 }
-int LR_A_r_D(int v) // LR A, r Decrement
+int LR_A_r_D(uint8_t v) // LR A, r Decrement
 {
-	A = R[ISAR];
+	F8_A = F8_R[F8_ISAR];
 	decISAR();
 	return 2;
 }
 	
-int LR_r_A(int v)   // 5x LR r, A : r <- A
+int LR_r_A(uint8_t v)   // 5x LR r, A : r <- A
 {
-	R[v&0xF] = A;
+	F8_R[v&0xF] = F8_A;
 	return 2;
 } 
-int LR_r_A_S(int v) // LR r, A Indirect
+int LR_r_A_S(uint8_t v) // LR r, A Indirect
 {
-	R[ISAR] = A;
+	F8_R[F8_ISAR] = F8_A;
 	return 2;
 }
-int LR_r_A_I(int v) // LR r, A Increment
+int LR_r_A_I(uint8_t v) // LR r, A Increment
 {
-	R[ISAR] = A;
+	F8_R[F8_ISAR] = F8_A;
 	incISAR();
 	return 2;
 }
-int LR_r_A_D(int v) // LR r, A Decrement
+int LR_r_A_D(uint8_t v) // LR r, A Decrement
 {
-	R[ISAR] = A;
+	F8_R[F8_ISAR] = F8_A;
 	decISAR();
 	return 2;
 }
 
-int LISU_i(int v) // 6x LISU i : ISARU <- i
+int LISU_i(uint8_t v) // 6x LISU i : ISARU <- i
 {
-	ISAR = (ISAR & 0x07) | ((v&0x7)<<3);
+	F8_ISAR = (F8_ISAR & 0x07) | ((v&0x7)<<3);
 	return 2;
 } 
 
-int LISL_i(int v) // 6x LISL i : ISARL <- i
+int LISL_i(uint8_t v) // 6x LISL i : ISARL <- i
 {
-	ISAR = (ISAR & 0x38) | (v&0x7);
+	F8_ISAR = (F8_ISAR & 0x38) | (v&0x7);
 	return 2;
 }
 
-int CLR(int v) // 70 CLR : A <- 0
-{
-	A = 0;
-	return 2;
-}
-
-int LIS_i(int v) // 7x LIS i : A <- i 
+int LIS_i(uint8_t v) // 7x LIS i : A <- i 
 { 
-	A = v&0xF;
+	F8_A = v&0xF;
 	return 2;
 } 
 
-int BT_t_n(int v) // 8x BT t, n : 1000 0ttt nnnn nnnn : 
+int BT_t_n(uint8_t v) // 8x BT t, n : 1000 0ttt nnnn nnnn : 
 {
 	// AND bitmask t with W, if result is not 0: PC0<-PC0+n+1
-	int t = ((W) & (v&0x7))!=0;
-	int n = readOperand8();
-	PC0 = PC0+calcBranch(n)*(t);
+	int t = ((F8_W) & (v&0x7))!=0;
+	uint8_t n = readOperand8();
+	F8_PC0 = F8_PC0+calcBranch(n)*(t);
 	return 6 + (t); // 3 - no jump,  3.5 - jump
 }
 
-int BP_n(int v)   // 81 BP n : branch if POSITIVE: PC0<-PC0+n+1 
+int BP_n(uint8_t v)   // 81 BP n : branch if POSITIVE: PC0<-PC0+n+1 
 {
-	int t = ((W>>flag_Sign)&1)==1;
-	int n = readOperand8();
-	PC0 = PC0+calcBranch(n)*(t);
+	int t = ((F8_W>>flag_Sign)&1)==1;
+	uint8_t n = readOperand8();
+	F8_PC0 = F8_PC0+calcBranch(n)*(t);
 	return 6 + (t); // 3 - no jump,  3.5 - jump
 }
 
-int BC_n(int v)   // 82 BC n : branch if CARRY: PC0<-PC0+n+1
+int BC_n(uint8_t v)   // 82 BC n : branch if CARRY: PC0<-PC0+n+1
 {
-	int t = ((W>>flag_Carry)&1)==1;
-	int n = readOperand8();
-	PC0 = PC0+calcBranch(n)*(t);
+	int t = ((F8_W>>flag_Carry)&1)==1;
+	uint8_t n = readOperand8();
+	F8_PC0 = F8_PC0+calcBranch(n)*(t);
 	return 6 + (t); // 3 - no jump,  3.5 - jump
 }
 
-int BZ_n(int v)   // 84 BZ n : branch if ZERO: PC0<-PC0+n+1
+int BZ_n(uint8_t v)   // 84 BZ n : branch if ZERO: PC0<-PC0+n+1
 {
-	int t = ((W>>flag_Zero)&1)==1;
-	int n = readOperand8();
-	PC0 = PC0+calcBranch(n)*(t);
+	int t = ((F8_W>>flag_Zero)&1)==1;
+	uint8_t n = readOperand8();
+	F8_PC0 = F8_PC0+calcBranch(n)*(t);
 	return 6 + (t); // 3 - no jump,  3.5 - jump
 }
 
-int AM(int v)  // 88 AM  : A <- A+(DC0), DC0++
+int AM(uint8_t v)  // 88 AM  : A <- A+(DC0), DC0++
 {
-	A = Add8(A, Memory[DC0]);
-	incDC0();
+	F8_A = Add8(F8_A, MEMORY_read8(F8_DC0++));
 	return 5;
 } 
 
-int AMD(int v) // 89 AMD : A <- A+(DC0) decimal adjusted, DC0++
+int AMD(uint8_t v) // 89 AMD : A <- A+(DC0) decimal adjusted, DC0++
 {
-	A = AddBCD(A, Memory[DC0]);
-	incDC0();
+	F8_A = AddBCD(F8_A, MEMORY_read8(F8_DC0++));
 	return 5;
 } 
 
-int NM(int v) // 8A NM  : A <- A AND (DC0), DC0+1
+int NM(uint8_t v) // 8A NM  : A <- A AND (DC0), DC0+1
 {
-	A = And8(A, Memory[DC0]);
-	incDC0();
+	F8_A = And8(F8_A, MEMORY_read8(F8_DC0++));
 	return 5;
 }
 
-int OM(int v) // 8B OM  : A <-  A OR (DC0), DC0+1
+int OM(uint8_t v) // 8B OM  : A <-  A OR (DC0), DC0+1
 {
-	A = Or8(A, Memory[DC0]);
-	incDC0();
+	F8_A = Or8(F8_A, MEMORY_read8(F8_DC0++));
 	return 5;
 } 
 
-int XM(int v) // 8C XM  : A <-  A OR (DC0), DC0+1
+int XM(uint8_t v) // 8C XM  : A <-  A OR (DC0), DC0+1
 {
-	A = Xor8(A, Memory[DC0]);
-	incDC0();
+	F8_A = Xor8(F8_A, MEMORY_read8(F8_DC0++));
 	return 5;
 }
 
-int CM(int v) // 8D CM  : (DC0) - A, only set status, DC0+1
+int CM(uint8_t v) // 8D CM  : (DC0) - A, only set status, DC0+1
 {
-	Sub8(Memory[DC0], A);
-	incDC0();
+	Sub8(MEMORY_read8(F8_DC0++), F8_A);
 	return 5;
 } 
 
-int ADC(int v) // 8E ADC : DC0 <- DC0 + A
+int ADC(uint8_t v) // 8E ADC : DC0 <- DC0 + A
 { 
-	DC0 += A+(0xFF00*(A>0x7F)); // A is signed
-	DC0 &= 0xFFFF;
+	F8_DC0 += F8_A+(0xFF00*(F8_A>0x7F)); // A is signed
 	return 5;
 } 
 
-int BR7_n(int v)   // 8F BR7 n : if ISARL != 7: PC0<-PC0+n+1 
+int BR7_n(uint8_t v)   // 8F BR7 n : if ISARL != 7: PC0<-PC0+n+1 
 {
-	int t = (ISAR&0x7)!=7;
-	int n = readOperand8();
-	PC0 = PC0+calcBranch(n)*(t);
+	int t = (F8_ISAR&0x7)!=7;
+	uint8_t n = readOperand8();
+	F8_PC0 = F8_PC0+calcBranch(n)*(t);
 	return 6 + (t); // 3 - no jump,  3.5 - jump
 }
 
-int BR_n(int v) // 90 BR n : PC0 <- PC0+n+1
+int BR_n(uint8_t v) // 90 BR n : PC0 <- PC0+n+1
 { 
-	int n = readOperand8();
-	PC0 = PC0+calcBranch(n);
+	uint8_t n = readOperand8();
+	F8_PC0 = F8_PC0+calcBranch(n);
 	return 7;
 }
 
-int BN_n(int v)   // 91 BN n : branch if NEGATIVE PC0<-PC0+n+1
+int BN_n(uint8_t v)   // 91 BN n : branch if NEGATIVE PC0<-PC0+n+1
 {
-	int t = ((W>>flag_Sign)&1)==0;
-	int n = readOperand8();
-	PC0 = PC0+calcBranch(n)*(t);
+	int t = ((F8_W>>flag_Sign)&1)==0;
+	uint8_t n = readOperand8();
+	F8_PC0 = F8_PC0+calcBranch(n)*(t);
 	return 6 + (t); // 3 - no jump,  3.5 - jump
 }
 
-int BNC_n(int v) // 92 BNC n : branch if NO CARRY: PC0 <- PC0+n+1 
+int BNC_n(uint8_t v) // 92 BNC n : branch if NO CARRY: PC0 <- PC0+n+1 
 {
-	int t = ((W>>flag_Carry)&1)==0;
-	int n = readOperand8();
-	PC0 = PC0+calcBranch(n)*(t);
+	int t = ((F8_W>>flag_Carry)&1)==0;
+	uint8_t n = readOperand8();
+	F8_PC0 = F8_PC0+calcBranch(n)*(t);
 	return 6 + (t); // 3 - no jump,  3.5 - jump
 }
 
-int BF_i_n(int v) // 9x BF i, n : 1001 iiii nnnn nnnn 
+int BF_i_n(uint8_t v) // 9x BF i, n : 1001 iiii nnnn nnnn 
 {
 	// AND bitmask i with W, if result is 0: PC0 <- PC0+n+1
-	int t = ((W) & (v&0xF))==0;
-	int n = readOperand8();
-	PC0 = PC0+calcBranch(n)*(t);
+	int t = ((F8_W) & (v&0xF))==0;
+	uint8_t n = readOperand8();
+	F8_PC0 = F8_PC0+calcBranch(n)*(t);
 	return 6 + (t); // 3 - no jump,  3.5 - jump
 }
 
-int BNZ_n(int v)  // 94 BNZ n : branch if NOT ZERO: PC0 <- PC0+n+1 
+int BNZ_n(uint8_t v)  // 94 BNZ n : branch if NOT ZERO: PC0 <- PC0+n+1 
 {
-	int t = ((W>>flag_Zero)&1)==0;
-	int n = readOperand8();
-	PC0 = PC0+calcBranch(n)*(t);
+	int t = ((F8_W>>flag_Zero)&1)==0;
+	uint8_t n = readOperand8();
+	F8_PC0 = F8_PC0+calcBranch(n)*(t);
 	return 6 + (t); // 3 - no jump,  3.5 - jump
 }
 
-int BNO_n(int v) // 98 BNO n : branch if NO OVERFLOW: PC0 <- PC0+n+1 
+int BNO_n(uint8_t v) // 98 BNO n : branch if NO OVERFLOW: PC0 <- PC0+n+1 
 {
-	int t = ((W>>flag_Overflow)&1)==0;
-	int n = readOperand8();
-	PC0 = PC0+calcBranch(n)*(t);
+	int t = ((F8_W>>flag_Overflow)&1)==0;
+	uint8_t n = readOperand8();
+	F8_PC0 = F8_PC0+calcBranch(n)*(t);
 	return 6 + (t); // 3 - no jump,  3.5 - jump
 }
 
-int INS_i(int v)  // Ax INS_i : 1010 iiii : A <- (Port i)
+int INS_i(uint8_t v)  // Ax INS_i : 1010 iiii : A <- (Port i)
 {
 	//  if i=2..15: Data Bus <- Port Address, A <- (Port i)
-	A = PORTS_read(v&0xF);
-	setFlags_0z0s(A);
+	F8_A = PORTS_read(v&0xF);
+	setFlags_0z0s(F8_A);
 	return 4 + 4*((v&0xF)>1); // 2 i=0..1, 4 i=2..15
 }
 
-int OUTS_i(int v) // Bx OUTS i : 1011 iiii : Port i <- A
+int OUTS_i(uint8_t v) // Bx OUTS i : 1011 iiii : Port i <- A
 {
 	// if i=2..15: Data Bus <- Port Address, Port i <- A
-	PORTS_notify(v&0xF, A);
+	PORTS_notify(v&0xF, F8_A);
 	return 4 + 4*((v&0xF)>1); // 2 i=0..1, 4 i=2..15
 }
 
-int AS_r(int v) // Cx AS r : A <- A+(r) 
+int AS_r(uint8_t v) // Cx AS r : A <- A+(r) 
 {
-	A = Add8(A, R[v&0xF]);
+	F8_A = Add8(F8_A, F8_R[v&0xF]);
 	return 2;
 } 
-int AS_r_S(int v) // AS r Indirect
+int AS_r_S(uint8_t v) // AS r Indirect
 {
-	A = Add8(A, R[ISAR]);
+	F8_A = Add8(F8_A, F8_R[F8_ISAR]);
 	return 2;
 }
-int AS_r_I(int v) // AS r Increment
+int AS_r_I(uint8_t v) // AS r Increment
 {
-	A = Add8(A, R[ISAR]);
+	F8_A = Add8(F8_A, F8_R[F8_ISAR]);
 	incISAR();
 	return 2;
 }
-int AS_r_D(int v) // AS r Decrement
+int AS_r_D(uint8_t v) // AS r Decrement
 {
-	A = Add8(A, R[ISAR]);
+	F8_A = Add8(F8_A, F8_R[F8_ISAR]);
 	decISAR();
 	return 2;
 }
 
-int ASD_r(int v)   // Dx ASD r  : A <- A+(r) [BCD]
+int ASD_r(uint8_t v)   // Dx ASD r  : A <- A+(r) [BCD]
 {
-	A = AddBCD(A, R[v&0xF]);
+	F8_A = AddBCD(F8_A, F8_R[v&0xF]);
 	return 4;
 }
-int ASD_r_S(int v) // ASD r Indirect
+int ASD_r_S(uint8_t v) // ASD r Indirect
 {
-	A = AddBCD(A, R[ISAR]); 
+	F8_A = AddBCD(F8_A, F8_R[F8_ISAR]); 
 	return 4;
 }
-int ASD_r_I(int v) // ASD r Increment
+int ASD_r_I(uint8_t v) // ASD r Increment
 {
-	A = AddBCD(A, R[ISAR]);
+	F8_A = AddBCD(F8_A, F8_R[F8_ISAR]);
 	incISAR();
 	return 4;
 }
-int ASD_r_D(int v) // ASD r Decrement
+int ASD_r_D(uint8_t v) // ASD r Decrement
 {
-	A = AddBCD(A, R[ISAR]);
+	F8_A = AddBCD(F8_A, F8_R[F8_ISAR]);
 	decISAR();
 	return 4;
 }
 
-int XS_r(int v) // Ex XS r   : A <- A XOR (r) 
+int XS_r(uint8_t v) // Ex XS r   : A <- A XOR (r) 
 {
-	A = Xor8(A, R[v&0xF]);
+	F8_A = Xor8(F8_A, F8_R[v&0xF]);
 	return 2;
 } 
-int XS_r_S(int v) // XS r Indirect
+int XS_r_S(uint8_t v) // XS r Indirect
 {
-	A = Xor8(A, R[ISAR]);
+	F8_A = Xor8(F8_A, F8_R[F8_ISAR]);
 	return 2;
 }
-int XS_r_I(int v) // XS r Increment
+int XS_r_I(uint8_t v) // XS r Increment
 {
-	A = Xor8(A, R[ISAR]);
+	F8_A = Xor8(F8_A, F8_R[F8_ISAR]);
 	incISAR();
 	return 2;
 }
-int XS_r_D(int v) // XS r Decrement
+int XS_r_D(uint8_t v) // XS r Decrement
 {
-	A = Xor8(A, R[ISAR]);
+	F8_A = Xor8(F8_A, F8_R[F8_ISAR]);
 	decISAR();
 	return 2;
 }
 
-int NS_r(int v)  // Fx NS r   : A <- A AND (r) 
+int NS_r(uint8_t v)  // Fx NS r   : A <- A AND (r) 
 {
-	A = And8(A, R[v&0xF]);
+	F8_A = And8(F8_A, F8_R[v&0xF]);
 	return 2;
 }
-int NS_r_S(int v) // NS r Indirect
+int NS_r_S(uint8_t v) // NS r Indirect
 {
-	A = And8(A, R[ISAR]);
+	F8_A = And8(F8_A, F8_R[F8_ISAR]);
 	return 2;
 }
-int NS_r_I(int v) // NS r Increment
+int NS_r_I(uint8_t v) // NS r Increment
 {
-	A = And8(A, R[ISAR]);
+	F8_A = And8(F8_A, F8_R[F8_ISAR]);
 	incISAR();
 	return 2;
 }
-int NS_r_D(int v) // NS r Decrement
+int NS_r_D(uint8_t v) // NS r Decrement
 {
-	A = And8(A, R[ISAR]);
+	F8_A = And8(F8_A, F8_R[F8_ISAR]);
 	decISAR();
 	return 2;
 }
@@ -925,11 +905,10 @@ void F8_init()
 		OpCodes[0x60+i] = LISU_i;  // 6x LISU i : ISARU <- i 
 		OpCodes[0x68+i] = LISL_i;  // 6x LISL i : ISARL <- i
 	}
-	OpCodes[0x70] = CLR;     // 70 CLR    : A <- 0
 
-	for(i=0; i<15; i++)
+	for(i=0; i<16; i++)
 	{
-		OpCodes[0x71+i] = LIS_i;   // 7x LIS i  : A <- i
+		OpCodes[0x70+i] = LIS_i;   // 7x LIS i  : A <- i
 	}
 	OpCodes[0x80] = BT_t_n; // 8x BT t, n : bit test t with W
 	OpCodes[0x81] = BP_n;   // 81 BP n    : branch if POSITIVE: PC0<-PC0+n+1
@@ -996,25 +975,21 @@ void F8_init()
 
 int F8_exec(void) /* execute a single instruction */
 {
-	PC0++;
-	return OpCodes[Memory[PC0-1]](Memory[PC0-1]);
+  	uint8_t opcode = MEMORY_read8(F8_PC0++);
+	return OpCodes[opcode](opcode);
 }
 
 void F8_reset(void)
 {
-	int i;
 	/* clear registers, flags */
-	A=0;
-	W=0;
-	ISAR = 0;
-	PC0=0; PC1=0;
-	DC0=0; DC1=0;
+	F8_A=0;
+	F8_W=0;
+	F8_ISAR = 0;
+	F8_PC0=0; F8_PC1=0;
+	F8_DC0=0; F8_DC1=0;
 
 	/* clear scratchpad */
-	for(i=0; i<64; i++)
-	{
-		R[i] = 0; 
-	}
+	memset(F8_R, 0, sizeof(F8_R));
 }
 
 
