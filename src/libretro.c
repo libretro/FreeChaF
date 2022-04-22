@@ -151,11 +151,13 @@ void retro_init(void)
 		  Ports
 
 		  hle_state
+
+		  Sean Riddle Multi-cart state register
 		*/
-		{RETRO_MEMDESC_SYSTEM_RAM, Memory,           0, 0, 0, 0, sizeof(Memory),       "M"},
-		{RETRO_MEMDESC_SYSTEM_RAM, F8_R,             0, 0, 0, 0, sizeof(F8_R),         "R"},
-		{RETRO_MEMDESC_SYSTEM_RAM, f2102_memory,     0, 0, 0, 0, sizeof(f2102_memory), "F"},
-		{RETRO_MEMDESC_VIDEO_RAM,  VIDEO_Buffer_raw, 0, 0, 0, 0, sizeof(VIDEO_Buffer_raw), "V"}
+		{RETRO_MEMDESC_SYSTEM_RAM, Memory,           0x000000, 0, 0, 0, sizeof(Memory), NULL},
+		{RETRO_MEMDESC_SYSTEM_RAM, F8_R,             0x100000, 0, 0, 0, sizeof(F8_R), NULL},
+		{RETRO_MEMDESC_SYSTEM_RAM, f2102_memory,     0x200000, 0, 0, 0, sizeof(f2102_memory), NULL},
+		{RETRO_MEMDESC_VIDEO_RAM,  VIDEO_Buffer_raw, 0x300000, 0, 0, 0, sizeof(VIDEO_Buffer_raw), NULL}
 	};
 	static struct retro_memory_map mem_map = { mem_descs, sizeof(mem_descs) / sizeof(mem_descs[0]) };
 
@@ -646,18 +648,28 @@ bool retro_unserialize(const void *data, size_t size)
 	return true;
 }
 
+#define FREECHAF_MEMORY_MEMBUS 0x100
+#define FREECHAF_MEMORY_F2102 0x101
+
 size_t retro_get_memory_size(unsigned id)
 {
 	switch(id)
 	{
 		case RETRO_MEMORY_SYSTEM_RAM: // System Memory
-			return R_SIZE;
+			return sizeof(F8_R);
 	
 		case RETRO_MEMORY_VIDEO_RAM: // Video Memory
 			return sizeof(VIDEO_Buffer_raw); //8192
 
 		//case RETRO_MEMORY_SAVE_RAM: // SRAM / Regular save RAM
-		//case RETRO_MEMORY_RTC: // Real-time clock value  
+		//case RETRO_MEMORY_RTC: // Real-time clock value
+
+	        case FREECHAF_MEMORY_MEMBUS:
+			return sizeof(Memory);
+
+	        case FREECHAF_MEMORY_F2102:
+			return sizeof(f2102_memory);
+
 	}
 	return 0;
 }
@@ -673,7 +685,13 @@ void *retro_get_memory_data(unsigned id)
 			return VIDEO_Buffer_raw;
 
 		//case RETRO_MEMORY_SAVE_RAM: // SRAM / Regular save RAM
-		//case RETRO_MEMORY_RTC: // Real-time clock value  
+		//case RETRO_MEMORY_RTC: // Real-time clock value
+
+	        case FREECHAF_MEMORY_MEMBUS:
+			return Memory;
+
+	        case FREECHAF_MEMORY_F2102:
+			return f2102_memory;
 	}
 	return 0;
 }
