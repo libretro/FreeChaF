@@ -154,10 +154,10 @@ void retro_init(void)
 
 		  Sean Riddle Multi-cart state register
 		*/
-		{RETRO_MEMDESC_SYSTEM_RAM, Memory,           0x000000, 0, 0, 0, sizeof(Memory), NULL},
-		{RETRO_MEMDESC_SYSTEM_RAM, F8_R,             0x100000, 0, 0, 0, sizeof(F8_R), NULL},
-		{RETRO_MEMDESC_SYSTEM_RAM, f2102_memory,     0x200000, 0, 0, 0, sizeof(f2102_memory), NULL},
-		{RETRO_MEMDESC_VIDEO_RAM,  VIDEO_Buffer_raw, 0x300000, 0, 0, 0, sizeof(VIDEO_Buffer_raw), NULL}
+		{RETRO_MEMDESC_SYSTEM_RAM, Memory,           0, 0x000000, 0, 0, sizeof(Memory), NULL},
+		{RETRO_MEMDESC_SYSTEM_RAM, F8_R,             0, 0x100000, 0, 0, sizeof(F8_R), NULL},
+		{RETRO_MEMDESC_SYSTEM_RAM, f2102_memory,     0, 0x200000, 0, 0, sizeof(f2102_memory), NULL},
+		{RETRO_MEMDESC_VIDEO_RAM,  VIDEO_Buffer_raw, 0, 0x300000, 0, 0, sizeof(VIDEO_Buffer_raw), NULL}
 	};
 	static struct retro_memory_map mem_map = { mem_descs, sizeof(mem_descs) / sizeof(mem_descs[0]) };
 	bool cheevos = true;
