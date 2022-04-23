@@ -160,6 +160,7 @@ void retro_init(void)
 		{RETRO_MEMDESC_VIDEO_RAM,  VIDEO_Buffer_raw, 0x300000, 0, 0, 0, sizeof(VIDEO_Buffer_raw), NULL}
 	};
 	static struct retro_memory_map mem_map = { mem_descs, sizeof(mem_descs) / sizeof(mem_descs[0]) };
+	bool cheevos = true;
 
 	// init buffers, structs
 	memset(frame, 0, frameSize*sizeof(pixel_t));
@@ -211,6 +212,8 @@ void retro_init(void)
 	}
 
 	Environ(RETRO_ENVIRONMENT_SET_MEMORY_MAPS, &mem_map);
+
+	Environ(RETRO_ENVIRONMENT_SET_SUPPORT_ACHIEVEMENTS, &cheevos);
 }
 
 bool retro_load_game(const struct retro_game_info *info)
