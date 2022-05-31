@@ -37,13 +37,17 @@
 #include "channelf_hle.h"
 
 #define DefaultFPS 60
-#define frameWidth 306
 #define frameHeight 192
 
-#ifdef PSP
+#ifdef __DJGPP__
+#define frameWidth 320
+#define framePitchPixel 320
+#elif defined(PSP)
 // Workaround for a psp1 gfx driver.
 #define framePitchPixel 320
+#define frameWidth 306
 #else
+#define frameWidth 306
 #define framePitchPixel frameWidth
 #endif
 
