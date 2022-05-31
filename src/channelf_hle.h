@@ -30,6 +30,7 @@ struct hle_state_s
 	uint8_t screen_clear_row;
 	uint8_t screen_clear_pal;
 	uint8_t screen_clear_color;
+	uint8_t delay_counter;
 };
 
 extern struct hle_state_s hle_state;

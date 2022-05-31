@@ -69,6 +69,10 @@ static int CHANNELF_HLE(void)
 		}
 		return TICKS_PER_ROW;
 	}
+	if (hle_state.delay_counter) {
+		hle_state.delay_counter--;
+		return 2563;
+	}
 	switch (F8_PC0)
 	{
 	case 0x0: // init
@@ -87,12 +91,13 @@ static int CHANNELF_HLE(void)
 		return 14914;
 	case 0x8f: // delay
 	{
-		int ticks = 2563 * F8_R[5];
+		uint8_t delay = F8_R[5];
 		F8_R[5] = 0;
 		F8_R[6] = 0;
 		F8_A = 0xff;
 		F8_PC0 = F8_PC1;
-		return ticks;
+		hle_state.delay_counter = delay;
+		return 10;
 	}
 	case 0xd0: // screen clear
 	{
@@ -166,7 +171,7 @@ static int CHANNELF_HLE(void)
 
 static int is_hle(void)
 {
-	if (hle_state.screen_clear_row)
+	if (hle_state.screen_clear_row || hle_state.delay_counter)
 		return 1;
 
 	if (F8_PC0 < 0x400 && hle_state.psu1_hle)
