@@ -594,7 +594,7 @@ bool retro_unserialize(const void *data, size_t size)
 {
   	const struct serialized_state *st = data;
 
-	if (size < sizeof (struct serialized_state) - 40)
+	if (size < sizeof (struct serialized_state) - 41)
 		return false;
 
 	memcpy (Memory, st->Memory, MEMORY_SIZE);
@@ -650,6 +650,8 @@ bool retro_unserialize(const void *data, size_t size)
 		memcpy(CONTROLLER_State, st->CONTROLLER_State, sizeof(st->CONTROLLER_State));
 
 		MEMORY_Multicart = st->MEMORY_Multicart;
+	} else {
+		hle_state.delay_counter = 0;
 	}
 
 	return true;
