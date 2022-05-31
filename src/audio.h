@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 
-extern int16_t AUDIO_Buffer[735 * 2];
+extern int16_t AUDIO_Buffer[735 * 2 * 2];
 extern uint8_t AUDIO_tone;
 extern int16_t AUDIO_amp;
 extern unsigned int AUDIO_sampleInCycle;

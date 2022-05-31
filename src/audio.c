@@ -20,7 +20,7 @@
 
 #include "sintable.h"
 
-int16_t AUDIO_Buffer[735 * 2];
+int16_t AUDIO_Buffer[735 * 2 * 2];
 
 uint8_t AUDIO_tone = 0; // current tone
 
