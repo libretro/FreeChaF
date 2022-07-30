@@ -53,7 +53,7 @@ ifneq (,$(filter $(platform), unix unix-armv7-hardfloat-neon unix-armv7-neon-har
 			CFLAGS += -march=armv7-a
 		else
 			CFLAGS += -march=armv7ve
-			# If gcc is 5.0 or later
+                        # If gcc is 5.0 or later
 			ifeq ($(shell echo `$(CC) -dumpversion` ">= 5" | bc -l), 1)
 				LDFLAGS += -static-libgcc -static-libstdc++
 			endif
@@ -217,11 +217,11 @@ else ifeq ($(platform), switch)
 	include $(LIBTRANSISTOR_HOME)/libtransistor.mk
 	HAVE_RZLIB := 1
 	STATIC_LINKING=1
-  
+
 # Classic Platforms ####################
 # Platform affix = classic_<ISA>_<µARCH>
 # Help at https://modmyclassic.com/comp
-	
+
 # (armv7 a7, hard point, neon based) ### 
 # NESC, SNESC, C64 mini 
 else ifeq ($(platform), classic_armv7_a7)
@@ -245,7 +245,7 @@ else ifeq ($(platform), classic_armv7_a7)
 	  endif
 	endif
 #######################################
-	
+
 # CTR/3DS
 else ifeq ($(platform), ctr)
 	TARGET := $(TARGET_NAME)_libretro_$(platform).a
@@ -320,10 +320,10 @@ else ifeq ($(platform), gcw0)
 	AR = /opt/gcw0-toolchain/usr/bin/mipsel-linux-ar
 	fpic := -fPIC
 	SHARED := -shared -Wl,--version-script=link.T -Wl,-no-undefined
-	
+
 	DISABLE_ERROR_LOGGING := 1
 	CFLAGS += -march=mips32 -mtune=mips32r2 -mhard-float
-	
+
 # Windows MSVC 2017 all architectures
 else ifneq (,$(findstring windows_msvc2017,$(platform)))
 
@@ -389,10 +389,10 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	WindowsSDKUCRTLibDir := $(shell cygpath -w "$(WindowsSdkDir)\Lib\$(WindowsSDKVersion)\ucrt\$(TargetArchMoniker)")
 	WindowsSDKUMLibDir := $(shell cygpath -w "$(WindowsSdkDir)\Lib\$(WindowsSDKVersion)\um\$(TargetArchMoniker)")
 
-	# For some reason the HostX86 compiler doesn't like compiling for x64
-	# ("no such file" opening a shared library), and vice-versa.
-	# Work around it for now by using the strictly x86 compiler for x86, and x64 for x64.
-	# NOTE: What about ARM?
+        # For some reason the HostX86 compiler doesn't like compiling for x64
+        # ("no such file" opening a shared library), and vice-versa.
+        # Work around it for now by using the strictly x86 compiler for x86, and x64 for x64.
+        # NOTE: What about ARM?
 	ifneq (,$(findstring x64,$(TargetArchMoniker)))
 		VCCompilerToolsBinDir := $(VcCompilerToolsDir)\bin\HostX64
 	else
@@ -506,7 +506,7 @@ else ifeq ($(platform), xbox1_msvc2003)
 	CFLAGS   += -D_XBOX -D_XBOX1
 	CXXFLAGS += -D_XBOX -D_XBOX1
 	STATIC_LINKING=1
-	
+
 # Windows MSVC 2010 Xbox 360
 else ifeq ($(platform), xbox360_msvc2010)
 	TARGET := $(TARGET_NAME)_libretro_xdk360.lib
