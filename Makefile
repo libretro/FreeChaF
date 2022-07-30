@@ -59,9 +59,6 @@ ifneq (,$(filter $(platform), unix unix-armv7-hardfloat-neon unix-armv7-neon-har
 				LDFLAGS += -static-libgcc -static-libstdc++
 			endif
 		endif
-		ifneq (,$(findstring neon,$(platform)))
-			HAVE_NEON = 1
-		endif
 	endif
 else ifeq ($(platform), linux-portable)
 	TARGET := $(TARGET_NAME)_libretro.$(EXT)
@@ -239,7 +236,6 @@ else ifeq ($(platform), classic_armv7_a7)
 	-fno-unwind-tables -fno-asynchronous-unwind-tables -fno-unroll-loops \
 	-fmerge-all-constants -fno-math-errno \
 	-marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
-	HAVE_NEON = 1
 	ARCH = arm
 	ifeq ($(shell echo `$(CC) -dumpversion` "< 4.9" | bc -l), 1)
 	  CFLAGS += -march=armv7-a
