@@ -43,11 +43,26 @@ ifeq ($(STATIC_LINKING),1)
 EXT := a
 endif
 
-ifneq (,$(filter $(platform), unix unix-armv7-hardfloat-neon))
+ifneq (,$(filter $(platform), unix unix-armv7-hardfloat-neon unix-armv7-neon-hardfloat))
 	EXT ?= so
 	TARGET := $(TARGET_NAME)_libretro.$(EXT)
 	fpic := -fPIC
 	SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T -Wl,--no-undefined
+	ifneq (,$(findstring armv7,$(platform)))
+		ARCH = arm
+		ifeq ($(shell echo `$(CC) -dumpversion` "< 4.9" | bc -l), 1)
+			CFLAGS += -march=armv7-a
+		else
+			CFLAGS += -march=armv7ve
+			# If gcc is 5.0 or later
+			ifeq ($(shell echo `$(CC) -dumpversion` ">= 5" | bc -l), 1)
+				LDFLAGS += -static-libgcc -static-libstdc++
+			endif
+		endif
+		ifneq (,$(findstring neon,$(platform)))
+			HAVE_NEON = 1
+		endif
+	endif
 else ifeq ($(platform), linux-portable)
 	TARGET := $(TARGET_NAME)_libretro.$(EXT)
 	fpic := -fPIC -nostdlib
