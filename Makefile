@@ -89,13 +89,13 @@ else ifneq (,$(findstring ios,$(platform)))
 	ifeq ($(platform),ios9)
 		CC = cc -arch armv7 -isysroot $(IOSSDK)
 		LD = cc -arch armv7 -isysroot $(IOSSDK)
-		CC	+= -miphoneos-version-min=8.0
-		CXXFLAGS += -miphoneos-version-min=8.0
+		CC	+= -miphoneos-version-min=5.0
+		CXXFLAGS += -miphoneos-version-min=5.0
 	else
 		CC = cc -arch arm64 -isysroot $(IOSSDK)
 		LD = cc -arch arm64 -isysroot $(IOSSDK)
-		CC	+= -miphoneos-version-min=8.0
-		CXXFLAGS += -miphoneos-version-min=8.0
+		CC	+= -miphoneos-version-min=7.0
+		CXXFLAGS += -miphoneos-version-min=7.0
 	endif
 
 # PS3
