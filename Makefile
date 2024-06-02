@@ -80,21 +80,23 @@ else ifneq (,$(findstring ios,$(platform)))
 	fpic := -fPIC
 	SHARED := -dynamiclib
 
-ifeq ($(IOSSDK),)
-	IOSSDK := $(shell xcodebuild -version -sdk iphoneos Path)
-endif
+	ifeq ($(IOSSDK),)
+		IOSSDK := $(shell xcodebuild -version -sdk iphoneos Path)
+	endif
 
-DEFINES := -DIOS
-CC = cc -arch armv7 -isysroot $(IOSSDK)
-LD = cc -arch armv7 -isysroot $(IOSSDK)
+	DEFINES := -DIOS
 
-ifeq ($(platform),ios9)
-	CC	+= -miphoneos-version-min=8.0
-	CXXFLAGS += -miphoneos-version-min=8.0
-else
-	CC	+= -miphoneos-version-min=5.0
-	CXXFLAGS += -miphoneos-version-min=5.0
-endif
+	ifeq ($(platform),ios9)
+		CC = cc -arch armv7 -isysroot $(IOSSDK)
+		LD = cc -arch armv7 -isysroot $(IOSSDK)
+		CC	+= -miphoneos-version-min=5.0
+		CXXFLAGS += -miphoneos-version-min=5.0
+	else
+		CC = cc -arch arm64 -isysroot $(IOSSDK)
+		LD = cc -arch arm64 -isysroot $(IOSSDK)
+		CC	+= -miphoneos-version-min=7.0
+		CXXFLAGS += -miphoneos-version-min=7.0
+	endif
 
 # PS3
 else ifeq ($(platform), ps3)
@@ -186,6 +188,8 @@ else ifeq ($(platform), tvos-arm64)
 	ifeq ($(IOSSDK),)
 		IOSSDK := $(shell xcodebuild -version -sdk appletvos Path)
 	endif
+	CC = cc -arch arm64 -isysroot $(IOSSDK)
+	LD = cc -arch arm64 -isysroot $(IOSSDK)
 
 # Nintendo Switch (libnx)
 else ifeq ($(platform), libnx)
@@ -276,6 +280,7 @@ else ifeq ($(platform), emscripten)
 	TARGET := $(TARGET_NAME)_libretro_$(platform).bc
 	fpic := -fPIC
 	SHARED := -shared -r
+	AR=emar
 	STATIC_LINKING=1
 
 # PS2
@@ -583,9 +588,7 @@ endif
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-ifeq ($(platform), emscripten)
-	$(LD) $(fpic) $(SHARED) $(LDFLAGS) $(LINKOUT)$@ $(OBJECTS) $(LIBS)
-else ifeq ($(STATIC_LINKING),1)
+ifeq ($(STATIC_LINKING),1)
 	$(AR) rcs $@ $(OBJECTS)
 else
 	$(LD) $(fpic) $(SHARED) $(LDFLAGS) $(LINKOUT)$@ $(OBJECTS) $(LIBS)
